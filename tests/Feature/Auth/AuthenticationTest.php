@@ -9,7 +9,11 @@ test('login screen can be rendered', function () {
 });
 
 test('users can authenticate using the login screen', function () {
-    $user = User::factory()->create();
+    \Spatie\Permission\Models\Role::create(['name' => 'Owner']);
+
+    $business = \App\Models\Business::factory()->create(['is_active' => true]);
+    $user = User::factory()->create(['business_id' => $business->id]);
+    $user->assignRole('Owner');
 
     $response = $this->post('/login', [
         'email' => $user->email,
@@ -17,7 +21,7 @@ test('users can authenticate using the login screen', function () {
     ]);
 
     $this->assertAuthenticated();
-    $response->assertRedirect(route('dashboard', absolute: false));
+    $response->assertRedirect(route('app.dashboard', absolute: false));
 });
 
 test('users can not authenticate with invalid password', function () {

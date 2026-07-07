@@ -6,10 +6,6 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ config('app.name') }}</title>
 
-    <meta name="theme-color" content="#58CC02">
-    <link rel="manifest" href="{{ asset('manifest.json') }}">
-    <link rel="apple-touch-icon" href="{{ asset('icons/icon-192x192.png') }}">
-
     @vite(['resources/css/app.css'])
 </head>
 <body class="bg-background text-foreground">

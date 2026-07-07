@@ -14,7 +14,11 @@ test('email verification screen can be rendered', function () {
 });
 
 test('email can be verified', function () {
-    $user = User::factory()->unverified()->create();
+    \Spatie\Permission\Models\Role::create(['name' => 'Owner']);
+
+    $business = \App\Models\Business::factory()->create(['is_active' => true]);
+    $user = User::factory()->unverified()->create(['business_id' => $business->id]);
+    $user->assignRole('Owner');
 
     Event::fake();
 
@@ -28,7 +32,7 @@ test('email can be verified', function () {
 
     Event::assertDispatched(Verified::class);
     expect($user->fresh()->hasVerifiedEmail())->toBeTrue();
-    $response->assertRedirect(route('dashboard', absolute: false).'?verified=1');
+    $response->assertRedirect(route('app.dashboard', absolute: false).'?verified=1');
 });
 
 test('email is not verified with invalid hash', function () {

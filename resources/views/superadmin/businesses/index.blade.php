@@ -3,69 +3,66 @@
 @section('title', 'Kelola Business')
 
 @section('content')
-<div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <h3 class="card-title">Daftar Business (Tenant)</h3>
-        <a href="{{ route('superadmin.businesses.create') }}" class="btn btn-primary">
-            <i class="fas fa-plus"></i> Tambah Business
+<x-card>
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold text-foreground">Daftar Business (Tenant)</h2>
+        <a href="{{ route('superadmin.businesses.create') }}">
+            <x-button>Tambah Business</x-button>
         </a>
     </div>
-    <div class="card-body">
-        @if($businesses->count() > 0)
-            <table class="table table-bordered table-striped">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Nama UMKM</th>
-                        <th>Pemilik</th>
-                        <th>Telepon</th>
-                        <th>Status</th>
-                        <th>Aksi</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($businesses as $business)
-                        <tr>
-                            <td>{{ $business->id }}</td>
-                            <td>{{ $business->name }}</td>
-                            <td>{{ $business->owner_name }}</td>
-                            <td>{{ $business->phone }}</td>
-                            <td>
-                                @if($business->is_active)
-                                    <span class="badge badge-success">Aktif</span>
-                                @else
-                                    <span class="badge badge-danger">Nonaktif</span>
-                                @endif
-                            </td>
-                            <td>
-                                <a href="{{ route('superadmin.businesses.edit', $business) }}" class="btn btn-sm btn-primary">
-                                    <i class="fas fa-edit"></i> Edit
+
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm text-foreground">
+            <thead class="bg-muted border-b border-border">
+                <tr>
+                    <th class="px-4 py-3 text-left font-semibold text-muted-foreground">ID</th>
+                    <th class="px-4 py-3 text-left font-semibold text-muted-foreground">Nama UMKM</th>
+                    <th class="px-4 py-3 text-left font-semibold text-muted-foreground">Pemilik</th>
+                    <th class="px-4 py-3 text-left font-semibold text-muted-foreground">Telepon</th>
+                    <th class="px-4 py-3 text-left font-semibold text-muted-foreground">Status</th>
+                    <th class="px-4 py-3 text-left font-semibold text-muted-foreground">Aksi</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-border">
+                @forelse($businesses as $business)
+                    <tr class="hover:bg-muted/50 transition">
+                        <td class="px-4 py-3">{{ $business->id }}</td>
+                        <td class="px-4 py-3">{{ $business->name }}</td>
+                        <td class="px-4 py-3">{{ $business->owner_name }}</td>
+                        <td class="px-4 py-3">{{ $business->phone }}</td>
+                        <td class="px-4 py-3">
+                            @if($business->is_active)
+                                <x-badge variant="success">Aktif</x-badge>
+                            @else
+                                <x-badge variant="danger">Nonaktif</x-badge>
+                            @endif
+                        </td>
+                        <td class="px-4 py-3">
+                            <div class="flex items-center gap-2">
+                                <a href="{{ route('superadmin.businesses.edit', $business) }}">
+                                    <x-button variant="secondary" size="sm">Edit</x-button>
                                 </a>
                                 @if($business->is_active)
-                                    <form action="{{ route('superadmin.businesses.deactivate', $business) }}" method="POST" class="d-inline">
+                                    <form action="{{ route('superadmin.businesses.deactivate', $business) }}" method="POST" class="inline">
                                         @csrf
-                                        <button type="submit" class="btn btn-sm btn-warning" onclick="return confirm('Nonaktifkan business ini?')">
-                                            <i class="fas fa-times-circle"></i> Nonaktifkan
-                                        </button>
+                                        <x-button variant="danger" size="sm" type="submit" onclick="return confirm('Nonaktifkan business ini?')">Nonaktifkan</x-button>
                                     </form>
                                 @else
-                                    <form action="{{ route('superadmin.businesses.activate', $business) }}" method="POST" class="d-inline">
+                                    <form action="{{ route('superadmin.businesses.activate', $business) }}" method="POST" class="inline">
                                         @csrf
-                                        <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('Aktifkan business ini?')">
-                                            <i class="fas fa-check-circle"></i> Aktifkan
-                                        </button>
+                                        <x-button variant="primary" size="sm" type="submit" onclick="return confirm('Aktifkan business ini?')">Aktifkan</x-button>
                                     </form>
                                 @endif
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        @else
-            <div class="text-center py-4">
-                <p class="text-muted">Belum ada data business</p>
-            </div>
-        @endif
+                            </div>
+                        </td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="6" class="px-4 py-8 text-center text-muted-foreground">Belum ada data business</td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
     </div>
-</div>
+</x-card>
 @endsection

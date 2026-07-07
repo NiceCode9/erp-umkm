@@ -82,12 +82,5 @@
         </div>
     </div>
 
-    <div id="offline-banner" style="display:none;" class="mt-6 bg-warning bg-opacity-10 border border-warning rounded-[var(--radius)] p-4 text-warning">
-        <i class="fas fa-wifi-off mr-2"></i> Anda sedang offline. Beberapa fitur mungkin tidak tersedia.
-    </div>
-
-    <button id="install-btn" style="display:none;" class="mt-6 px-6 py-2 bg-primary text-primary-foreground rounded-[var(--radius)] hover:bg-primary/90 transition">
-        <i class="fas fa-download mr-2"></i> Instal Aplikasi
-    </button>
 </div>
 @endsection

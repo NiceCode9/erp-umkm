@@ -29,8 +29,8 @@
 | Kolom | Tipe | Keterangan |
 |---|---|---|
 | id | bigint PK | |
-| business_id | FK businesses, **nullable** | Null untuk Superadmin (lintas tenant) |
-| branch_id | FK branches, nullable | Wajib diisi untuk role Kasir; null untuk Owner (akses semua cabang miliknya) |
+| business_id | FK businesses, **nullable** | Null untuk Superadmin (lintas tenant). **PENTING:** jangan terapkan Global Scope generik ke model User berdasarkan kolom ini — lihat `AGENTS.md` bagian 2.1 (risiko infinite recursion). Filter per business untuk User dilakukan eksplisit di query/controller. |
+| branch_id | FK branches, nullable | Wajib diisi untuk role Kasir (assignment permanen ke satu cabang); **null untuk Owner** — bukan berarti Owner "tidak berhubungan dengan cabang manapun", tapi karena Owner punya akses ke semua cabang miliknya sekaligus, tidak terikat satu cabang. Lihat `ARCHITECTURE.md` bagian 2.1 untuk cara Owner memilih cabang saat melakukan aksi yang sifatnya per-cabang. |
 | name | string | |
 | email | string, unique | |
 | password | string | |

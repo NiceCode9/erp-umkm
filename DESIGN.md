@@ -1,6 +1,6 @@
 # DESIGN.md - Panduan UI/UX
 
-Dokumen ini memastikan AI coding agent menghasilkan tampilan yang konsisten di seluruh halaman, alih-alih desain yang berbeda-beda tiap kali generate view baru. Berlaku untuk area `/app/*` (Tailwind CSS, PWA) — area `/superadmin/*` mengikuti konvensi bawaan AdminLTE 4 apa adanya (lihat bagian 7).
+Dokumen ini memastikan AI coding agent menghasilkan tampilan yang konsisten di seluruh halaman, alih-alih desain yang berbeda-beda tiap kali generate view baru. Berlaku untuk **seluruh area** (Superadmin, Owner, Kasir) — satu design system yang sama, karena seluruhnya memakai Blade + Tailwind CSS tanpa PWA.
 
 ## 1. Prinsip Desain
 
@@ -53,10 +53,10 @@ Menggunakan CSS custom properties (`:root`), terinspirasi palet Duolingo — cer
 | `--border` / `--input` | Garis pembatas, border input form |
 | `--radius` (`0.625rem`) | Radius standar untuk card, button, input — jaga konsisten, jangan campur radius berbeda antar komponen |
 
-**Integrasi dengan Tailwind CSS:** daftarkan seluruh token di atas ke `tailwind.config.js` melalui `theme.extend.colors` (mis. `primary: 'var(--primary)'`, `destructive: 'var(--destructive)'`, dst.) sehingga bisa dipakai langsung sebagai utility class seperti `bg-primary`, `text-destructive`, `border-border`, `rounded-[var(--radius)]`. CSS variables didefinisikan sekali di `resources/css/app.css` pada `:root`. Dengan pendekatan ini, mengganti warna brand di kemudian hari cukup mengubah nilai variable, tanpa menyentuh markup Blade. Area `/superadmin/*` (AdminLTE 4) **tidak** memakai token ini — tetap pakai skema warna bawaan AdminLTE (lihat bagian 7).
+**Integrasi dengan Tailwind CSS:** daftarkan seluruh token di atas ke `tailwind.config.js` melalui `theme.extend.colors` (mis. `primary: 'var(--primary)'`, `destructive: 'var(--destructive)'`, dst.) sehingga bisa dipakai langsung sebagai utility class seperti `bg-primary`, `text-destructive`, `border-border`, `rounded-[var(--radius)]`. CSS variables didefinisikan sekali di `resources/css/app.css` pada `:root`. Dengan pendekatan ini, mengganti warna brand di kemudian hari cukup mengubah nilai variable, tanpa menyentuh markup Blade. **Token ini berlaku untuk seluruh area termasuk Superadmin** — tidak ada lagi skema warna terpisah untuk Superadmin.
 
 ### Tipografi
-- Font: system font stack (`font-sans` default Tailwind, atau daftarkan eksplisit di `tailwind.config.js` bila ingin pin ke `-apple-system, Segoe UI, Roboto, ...`) — tidak perlu font custom di awal, mengurangi beban loading PWA.
+- Font: system font stack (`font-sans` default Tailwind, atau daftarkan eksplisit di `tailwind.config.js` bila ingin pin ke `-apple-system, Segoe UI, Roboto, ...`) — tidak perlu font custom di awal, mengurangi beban loading halaman.
 - Ukuran heading pakai skala default Tailwind (`text-xl`, `text-2xl`, `text-3xl`, dst.) secara konsisten per level heading — tetapkan mapping sekali (mis. `h1` = `text-3xl font-bold`, `h2` = `text-2xl font-semibold`) dan jangan variasikan ukuran ad-hoc per halaman.
 - Warna teks utama pakai `text-foreground` (`#3C3C3C`), bukan hitam pekat (`#000000`) — konsisten dengan nuansa Duolingo yang lebih lembut.
 
@@ -118,17 +118,17 @@ Menggunakan CSS custom properties (`:root`), terinspirasi palet Duolingo — cer
 - Navigasi Kasir: dibuat sangat ringkas — hanya Kasir (transaksi), Riwayat Penjualan, Profil. Jangan tampilkan menu yang tidak relevan dengan role Kasir (lihat `PERMISSIONS.md`).
 - **Menu dinamis:** karena sistem permission bisa berubah, sidebar sebaiknya di-generate dari permission yang dimiliki user (bukan hardcode per role di Blade), agar konsisten dengan `PERMISSIONS.md`.
 
-## 6. PWA - Elemen Visual Tambahan
+## 6. Halaman Autentikasi (Laravel Breeze)
 
-- Ikon aplikasi (berbagai ukuran sesuai `manifest.json`) dan splash screen sederhana dengan warna `--primary` (`#58CC02`) sebagai background.
-- Tombol/banner "Install Aplikasi" muncul non-intrusive (mis. di dashboard, bisa ditutup), memicu `beforeinstallprompt`.
-- Indikator status koneksi (mis. banner kecil) saat aplikasi mendeteksi offline — mengingat aplikasi bersifat online-only, ini penting agar user tahu kenapa transaksi tidak bisa diproses.
+- Halaman login/register bawaan Laravel Breeze (stack Blade) WAJIB disesuaikan ke token warna & komponen di dokumen ini (`--primary`, `<x-button>`, `<x-input>`) — jangan biarkan tampil dengan styling default Breeze yang belum disentuh.
+- Karena aplikasi tidak menggunakan PWA, tidak perlu elemen ikon/manifest/splash screen — cukup halaman login yang bersih dan konsisten dengan design token, dengan logo/nama aplikasi di bagian atas form.
 
-## 7. Area Superadmin (AdminLTE 4)
+## 7. Area Superadmin
 
-- Ikuti struktur dan komponen bawaan AdminLTE 4 tanpa kustomisasi visual berlebihan — area ini murni operasional internal, prioritas fungsi bukan estetika.
+- Superadmin memakai **design system yang sama persis** dengan area Owner/Kasir (Blade component, token warna, tipografi) — bukan lagi tema terpisah seperti AdminLTE.
+- Perbedaan cukup di navigasi (sidebar khusus Superadmin: daftar tenant, aktivasi/nonaktivasi) dan konten halaman, bukan di sistem visual.
 - Tetap terapkan pola modal konfirmasi untuk aksi aktif/nonaktifkan business (konsisten dengan prinsip di bagian 3).
-- Jangan bagikan file CSS/JS antara area ini dengan area `/app/*` (lihat aturan pemisahan di `AGENTS.md` bagian 4).
+- Karena area ini murni operasional internal, prioritaskan kejelasan tabel/data di atas dekorasi visual — tapi tetap pakai komponen yang sama (`<x-card>`, `<x-badge>`, `<x-data-table>`) demi konsistensi kode.
 
 ## 8. Aksesibilitas Dasar
 
@@ -138,6 +138,6 @@ Menggunakan CSS custom properties (`:root`), terinspirasi palet Duolingo — cer
 
 ## 9. Dokumen Terkait
 
-- `AGENTS.md` — aturan pemisahan area & larangan mencampur asset AdminLTE/Tailwind, serta konfigurasi build Vite.
+- `AGENTS.md` — aturan wajib Blade component & konfigurasi build Vite untuk seluruh area.
 - `PERMISSIONS.md` — dasar untuk menu dinamis berbasis permission.
-- `ARCHITECTURE.md` — konteks teknis layout & PWA.
+- `ARCHITECTURE.md` — konteks teknis layout & responsivitas (tanpa PWA).

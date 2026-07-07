@@ -69,6 +69,7 @@ Dikelola menggunakan `spatie/laravel-permission`. Tiga role utama: **Superadmin*
 ## 3.1 Keputusan Terkonfirmasi
 
 - Kasir **boleh** menerima dan mencatat pembayaran cicilan piutang pelanggan, terbatas pada transaksi di cabangnya sendiri.
+- **Tidak ada self-registration.** Akun hanya dibuat melalui: Superadmin membuat business + akun Owner awal sekaligus; Owner membuat akun Kasir. Tidak ada role yang bisa mendaftar sendiri lewat halaman publik (lihat `AGENTS.md` bagian 3.1).
 
 ## 4. Implementasi Teknis (Referensi untuk AGENTS.md)
 

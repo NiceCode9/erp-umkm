@@ -2,7 +2,7 @@
 
 ## 1. Gambaran Umum
 
-Aplikasi berjalan sebagai satu project Laravel 13 dengan **dua area terpisah** dan pola **multi-tenant single database**. Lihat `PRD.md` untuk konteks bisnis lengkap, `DATABASE.md` untuk skema, dan `AGENTS.md` untuk aturan keras yang wajib diikuti AI agent.
+Aplikasi berjalan sebagai satu project Laravel 13 dengan **dua area route terpisah** (berbasis role, bukan berbasis stack UI) dan pola **multi-tenant single database**. Seluruh area memakai **satu stack visual yang sama: Blade + Tailwind CSS**, tanpa PWA. Lihat `PRD.md` untuk konteks bisnis lengkap, `DATABASE.md` untuk skema, dan `AGENTS.md` untuk aturan keras yang wajib diikuti AI agent.
 
 ```
                     ┌─────────────────────────┐
@@ -14,12 +14,13 @@ Aplikasi berjalan sebagai satu project Laravel 13 dengan **dua area terpisah** d
               │                                  │
     ┌─────────▼─────────┐            ┌───────────▼───────────┐
     │   /superadmin/*    │            │        /app/*          │
-    │   Layout: AdminLTE4│            │   Layout: Tailwind CSS   │
-    │   Bukan PWA         │            │   PWA (online-only)    │
+    │   Layout: Blade+Tailwind│       │   Layout: Blade+Tailwind│
     │   Akses lintas tenant│           │   Scoped per business_id│
     │   Role: Superadmin  │            │   Role: Owner, Kasir    │
     └─────────────────────┘            └─────────────────────────┘
 ```
+
+> Tidak ada PWA di project ini (keputusan final) — cukup web responsif biasa yang dioptimalkan untuk layar sentuh, khususnya halaman Kasir.
 
 ## 2. Strategi Multi-Tenancy
 
@@ -42,11 +43,11 @@ routes/
   app.php                -> group prefix 'app', middleware ['auth','role:Owner|Kasir','business.active']
 ```
 
-- Autentikasi tunggal (satu tabel `users`, satu halaman login) — setelah login, redirect ditentukan oleh role:
+- Autentikasi menggunakan **Laravel Breeze (stack Blade)** — satu tabel `users`, satu halaman login (view Breeze disesuaikan ke token warna & komponen `DESIGN.md`) — setelah login, redirect ditentukan oleh role:
   - Superadmin → `/superadmin/dashboard`
   - Owner/Kasir → `/app/dashboard`
-- Layout Blade terpisah total: `resources/views/superadmin/layouts/app.blade.php` (AdminLTE 4) vs `resources/views/app/layouts/app.blade.php` (Tailwind CSS + PWA meta tags).
-- **Build asset:** Tailwind CSS dikompilasi via Laravel Vite (`resources/css/app.css`, `tailwind.config.js` dengan `content` di-scope ke `resources/views/app/**`) — hanya untuk area `/app/*`. AdminLTE 4 dimuat sebagai asset statis terpisah (CDN atau `public/vendor/adminlte`), tidak diproses lewat Vite/Tailwind agar kedua sistem styling tidak saling bentrok class-nya.
+- Layout Blade berbeda **hanya di level wrapper** (sidebar/navigasi per role), bukan beda stack: `resources/views/superadmin/layouts/app.blade.php` vs `resources/views/app/layouts/app.blade.php` — keduanya sama-sama Blade + Tailwind, boleh berbagi Blade component dasar (`<x-button>`, `<x-card>`, dst.) dari `resources/views/components/`.
+- **Build asset:** Tailwind CSS dikompilasi via Laravel Vite (`resources/css/app.css`, `tailwind.config.js` dengan `content` di-scope ke SELURUH `resources/views/**`, mencakup superadmin & app) — satu pipeline build untuk seluruh project, tidak ada lagi pemisahan asset per area.
 
 ## 4. Modularisasi Kode (Domain-Based)
 
@@ -73,14 +74,11 @@ app/
 
 - Service class menjadi satu-satunya pintu masuk untuk operasi yang menyentuh stok atau kalkulasi finansial (lihat `AGENTS.md` bagian 5 & `BUSINESS-RULES.md`).
 
-## 5. PWA (Online-Only)
+## 5. Responsivitas (Bukan PWA)
 
-- `manifest.json` di root public, hanya di-load pada layout area `/app/*`.
-- Service worker (`sw.js`) didaftarkan hanya di layout `/app/*`, dengan scope terbatas untuk:
-  - Caching asset statis (CSS, JS, ikon, font).
-  - Menampilkan halaman fallback sederhana "Anda sedang offline, silakan cek koneksi internet" jika request gagal karena tidak ada jaringan.
-- **Tidak ada** caching untuk response data/API, tidak ada IndexedDB, tidak ada background sync — sesuai keputusan aplikasi bersifat online-only (lihat `PRD.md` bagian 8, Out of Scope).
-- Install prompt (`beforeinstallprompt`) ditampilkan di dashboard Owner/Kasir agar user bisa "Add to Home Screen".
+- Aplikasi **tidak** menggunakan PWA — tidak ada `manifest.json`, tidak ada service worker, tidak ada install prompt. Ini keputusan final (lihat `PRD.md` bagian 8, Out of Scope).
+- Responsivitas dicapai murni via Tailwind responsive utility (`sm:`, `md:`, `lg:`, dst.) — setiap halaman, terutama halaman Kasir, harus dites di breakpoint mobile/tablet karena kemungkinan besar diakses dari layar sentuh di lokasi kasir fisik.
+- Tidak perlu penanganan khusus untuk kondisi offline — cukup penanganan error standar (mis. timeout Ajax, gagal submit) yang menampilkan pesan singkat ke user untuk mencoba lagi.
 
 ## 6. Alur Data Antar Modul (Ringkasan)
 

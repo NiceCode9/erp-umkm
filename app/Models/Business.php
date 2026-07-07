@@ -2,13 +2,16 @@
 
 namespace App\Models;
 
+use Database\Factories\BusinessFactory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Activitylog\Traits\LogsActivity;
 
 class Business extends Model
 {
-    use LogsActivity;
+    /** @use HasFactory<BusinessFactory> */
+    use HasFactory, LogsActivity;
 
     protected $fillable = [
         'name',

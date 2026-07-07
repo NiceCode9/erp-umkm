@@ -1,4 +1,4 @@
-# PRD - ERP UMKM (Multi-Tenant SaaS)
+# PRD - SIMKLINIK ERP UMKM (Multi-Tenant SaaS)
 
 > Catatan: Nama aplikasi masih placeholder, sesuaikan sesuai kebutuhan branding.
 
@@ -14,8 +14,8 @@ Aplikasi berjalan sebagai **platform SaaS multi-tenant**: satu instalasi aplikas
 |---|---|
 | Framework | Laravel 13 |
 | Database | MySQL (single database, shared, multi-tenant via `business_id`) |
-| UI Owner & Kasir | Tailwind CSS + PWA (installable, **online-only**, tanpa offline sync) |
-| UI Superadmin | AdminLTE 4 (bukan PWA) |
+| UI (seluruh area: Superadmin, Owner, Kasir) | Blade + Tailwind CSS, responsive (tanpa PWA) |
+| Autentikasi | Laravel Breeze (stack Blade) |
 | Role & Permission | spatie/laravel-permission |
 | Activity Log | spatie/laravel-activitylog |
 | Export Excel | maatwebsite/excel |
@@ -33,9 +33,10 @@ Aplikasi berjalan sebagai **platform SaaS multi-tenant**: satu instalasi aplikas
 - Hampir seluruh tabel transaksional (produk, bahan baku, stok, penjualan, pembelian, keuangan) wajib memiliki kolom `business_id`.
 - Isolasi data antar tenant WAJIB diterapkan melalui **Global Scope** otomatis berdasarkan `business_id` user yang login (kecuali area Superadmin, yang mengakses lintas tenant).
 - Superadmin **tidak terikat** pada `business_id` tertentu.
-- Terdapat dua area terpisah dalam satu project:
-  - `/superadmin/*` — layout AdminLTE 4, non-PWA.
-  - `/app/*` (Owner & Kasir) — layout Tailwind CSS, PWA (manifest.json + service worker untuk app-shell caching, tanpa offline transaksi).
+- Terdapat dua area route terpisah berdasarkan role (untuk kejelasan middleware & organisasi kode), namun **menggunakan satu stack visual yang sama**:
+  - `/superadmin/*` — Blade + Tailwind CSS.
+  - `/app/*` (Owner & Kasir) — Blade + Tailwind CSS.
+  - Tidak ada PWA (tanpa manifest.json, tanpa service worker) — cukup web responsif biasa yang dioptimalkan untuk layar sentuh (khususnya halaman Kasir).
 
 ## 4. Role & Hak Akses (Ringkasan)
 
@@ -50,6 +51,8 @@ Detail matrix permission akan dijabarkan lengkap di `PERMISSIONS.md`.
 ## 5. Manajemen Tenant (Business) oleh Superadmin
 
 - Superadmin dapat melihat daftar seluruh business (UMKM) yang terdaftar.
+- **Pendaftaran tenant tertutup (bukan self-service):** tidak ada halaman Register publik untuk UMKM baru mendaftar sendiri. Satu-satunya cara business baru masuk ke sistem adalah **Superadmin membuat business tersebut secara manual**, sekaligus membuat akun Owner awal (email & password) dalam satu alur form yang sama.
+- Halaman Register bawaan Laravel Breeze **dinonaktifkan/dihapus** — tidak diakses publik. Pembuatan akun setelah itu hanya terjadi via: Superadmin membuat Owner baru (saat membuat business), dan Owner membuat akun Kasir (sesuai `PERMISSIONS.md`).
 - Superadmin dapat **mengaktifkan/menonaktifkan** sebuah business.
 - Jika business dinonaktifkan (`is_active = false`):
   - Seluruh user (Owner & Kasir) yang terikat pada business tersebut **tidak dapat mengakses aplikasi** (di-redirect ke halaman informasi akun nonaktif).
@@ -135,7 +138,7 @@ Detail matrix permission akan dijabarkan lengkap di `PERMISSIONS.md`.
 
 ## 7. Non-Functional Requirements
 
-- **PWA**: installable, app-shell caching, **tidak mendukung mode offline** — aplikasi mewajibkan koneksi internet aktif untuk seluruh transaksi.
+- **Responsivitas**: seluruh halaman (terutama Kasir) harus optimal di layar sentuh/tablet maupun desktop, dibangun murni dengan Blade + Tailwind responsive utility (tanpa PWA/installable app).
 - **Keamanan**: isolasi data antar tenant adalah persyaratan keras (hard requirement), bukan opsional.
 - **Audit Trail**: seluruh aksi penting (transaksi, perubahan stok, aktivasi/nonaktivasi business) tercatat melalui activity log.
 - **Skalabilitas**: single database dengan potensi jumlah tenant bertambah signifikan — struktur index dan query harus efisien per `business_id`.
@@ -143,13 +146,14 @@ Detail matrix permission akan dijabarkan lengkap di `PERMISSIONS.md`.
 ## 8. Di Luar Cakupan (Out of Scope) Versi Ini
 
 - Sistem subscription/billing/paket berbayar.
+- PWA / installable app (diputuskan tidak dipakai — cukup web responsif Blade + Tailwind).
 - Mode offline / sinkronisasi data.
 - Superadmin impersonate akun tenant (dapat dipertimbangkan di fase lanjutan).
 - API publik untuk integrasi pihak ketiga.
 
 ## 9. Dokumen Terkait
 
-- `ARCHITECTURE.md` — detail teknis arsitektur multi-tenant & pemisahan area PWA/AdminLTE.
+- `ARCHITECTURE.md` — detail teknis arsitektur multi-tenant & struktur area Superadmin/Owner/Kasir.
 - `DATABASE.md` / `ERD.md` — skema database lengkap.
 - `PERMISSIONS.md` — matrix akses detail per role.
 - `BUSINESS-RULES.md` — logika kalkulasi produksi (BOM), FEFO, tax, diskon, utang-piutang.

@@ -3,101 +3,72 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ config('app.name') }} - Superadmin</title>
 
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@4.0.0-beta2/dist/css/adminlte.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="hold-transition sidebar-mini">
-<div class="wrapper">
-    <nav class="main-header navbar navbar-expand navbar-white navbar-light">
-        <ul class="navbar-nav">
-            <li class="nav-item">
-                <a class="nav-link" data-widget="pushmenu" href="#" role="button"><i class="fas fa-bars"></i></a>
-            </li>
-        </ul>
-        <ul class="navbar-nav ml-auto">
-            <li class="nav-item">
-                <form method="POST" action="{{ route('logout') }}">
-                    @csrf
-                    <button type="submit" class="nav-link btn btn-link">
-                        <i class="fas fa-sign-out-alt"></i> Logout
-                    </button>
-                </form>
-            </li>
-        </ul>
-    </nav>
-
-    <aside class="main-sidebar sidebar-dark-primary elevation-4">
-        <a href="{{ route('superadmin.dashboard') }}" class="brand-link">
-            <span class="brand-text font-weight-light">{{ config('app.name') }}</span>
-        </a>
-
-        <div class="sidebar">
-            <div class="user-panel mt-3 pb-3 mb-3 d-flex">
-                <div class="info">
-                    <a href="#" class="d-block">{{ auth()->user()->name }}</a>
-                    <small class="text-muted">Superadmin</small>
-                </div>
+<body class="bg-background text-foreground">
+    <div class="min-h-screen flex">
+        <aside class="w-64 bg-card border-r border-border hidden lg:block">
+            <div class="p-4 border-b border-border">
+                <h2 class="text-xl font-bold text-primary">{{ config('app.name') }}</h2>
+                <p class="text-sm text-muted-foreground">Superadmin Panel</p>
             </div>
-
-            <nav class="mt-2">
-                <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu">
-                    <li class="nav-item">
-                        <a href="{{ route('superadmin.dashboard') }}" class="nav-link {{ request()->routeIs('superadmin.dashboard') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-tachometer-alt"></i>
-                            <p>Dashboard</p>
+            <nav class="p-4">
+                <ul class="space-y-1">
+                    <li>
+                        <a href="{{ route('superadmin.dashboard') }}" class="flex items-center px-4 py-2 rounded-[var(--radius)] text-sm {{ request()->routeIs('superadmin.dashboard') ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted' }}">
+                            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+                            Dashboard
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a href="{{ route('superadmin.businesses.index') }}" class="nav-link {{ request()->routeIs('superadmin.businesses.*') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-building"></i>
-                            <p>Kelola Business</p>
+                    <li>
+                        <a href="{{ route('superadmin.businesses.index') }}" class="flex items-center px-4 py-2 rounded-[var(--radius)] text-sm {{ request()->routeIs('superadmin.businesses.*') ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted' }}">
+                            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                            Kelola Business
                         </a>
                     </li>
                 </ul>
             </nav>
-        </div>
-    </aside>
+        </aside>
 
-    <div class="content-wrapper">
-        <section class="content-header">
-            <div class="container-fluid">
-                <div class="row mb-2">
-                    <div class="col-sm-6">
-                        <h1>@yield('title')</h1>
-                    </div>
+        <div class="flex-1 flex flex-col">
+            <header class="bg-card border-b border-border px-6 py-3 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <button type="button" class="lg:hidden p-2 rounded-[var(--radius)] hover:bg-muted" onclick="document.querySelector('aside').classList.toggle('hidden')">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                    </button>
+                    <h1 class="text-xl font-semibold">@yield('title', 'Dashboard')</h1>
                 </div>
-            </div>
-        </section>
+                <div class="flex items-center gap-4">
+                    <span class="text-sm text-muted-foreground">{{ auth()->user()->name }}</span>
+                    <form method="POST" action="{{ route('logout') }}">
+                        @csrf
+                        <x-button variant="secondary" size="sm" type="submit">Logout</x-button>
+                    </form>
+                </div>
+            </header>
 
-        <section class="content">
-            <div class="container-fluid">
+            <main class="flex-1 p-6">
                 @if(session('success'))
-                    <div class="alert alert-success alert-dismissible fade show">
+                    <div class="mb-4 p-4 bg-primary/10 text-primary rounded-[var(--radius)] border border-primary/20">
                         {{ session('success') }}
-                        <button type="button" class="close" data-dismiss="alert">&times;</button>
                     </div>
                 @endif
                 @if(session('error'))
-                    <div class="alert alert-danger alert-dismissible fade show">
+                    <div class="mb-4 p-4 bg-destructive/10 text-destructive rounded-[var(--radius)] border border-destructive/20">
                         {{ session('error') }}
-                        <button type="button" class="close" data-dismiss="alert">&times;</button>
                     </div>
                 @endif
                 @yield('content')
-            </div>
-        </section>
+            </main>
+
+            <footer class="border-t border-border px-6 py-3 text-sm text-muted-foreground">
+                &copy; {{ date('Y') }} {{ config('app.name') }}. All rights reserved.
+            </footer>
+        </div>
     </div>
-
-    <footer class="main-footer">
-        <strong>&copy; {{ date('Y') }} {{ config('app.name') }}.</strong> All rights reserved.
-    </footer>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.0/dist/jquery.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/admin-lte@4.0.0-beta2/dist/js/adminlte.min.js"></script>
-@stack('scripts')
+    @stack('scripts')
 </body>
 </html>

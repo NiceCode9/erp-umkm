@@ -5,18 +5,20 @@ Urutan ini dirancang agar setiap fase menghasilkan sistem yang bisa langsung dit
 ## Fase 0 - Fondasi Project
 
 - Setup project Laravel 13, konfigurasi database, environment.
+- Install Laravel Breeze (stack Blade) untuk autentikasi, sesuaikan view login/register ke token warna & komponen di `DESIGN.md`.
 - Install & konfigurasi seluruh library wajib (`spatie/laravel-permission`, `spatie/laravel-activitylog`, `spatie/laravel-settings`, `spatie/laravel-medialibrary`, `spatie/laravel-backup`, `maatwebsite/excel`, `barryvdh/laravel-dompdf`, `yajra/laravel-datatables`, `milon/barcode`, `intervention/image`).
 - Migration dasar: `businesses`, `branches`, `users` + integrasi role Superadmin/Owner/Kasir.
 - Implementasi Global Scope multi-tenant (`BelongsToBusiness`) dan middleware `EnsureBusinessIsActive` — ini fondasi keamanan, harus selesai & teruji sebelum lanjut ke modul lain.
-- Setup dua layout terpisah: AdminLTE 4 (`/superadmin`) dan Tailwind CSS (`/app`), termasuk `manifest.json` + service worker dasar untuk PWA.
-- Autentikasi & redirect berbasis role setelah login.
+- Setup dua layout Blade terpisah berdasarkan role (`/superadmin`, `/app`) — keduanya memakai Blade + Tailwind CSS yang sama, tanpa PWA (tidak ada manifest.json/service worker).
+- Buat Blade component dasar (`<x-button>`, `<x-badge>`, `<x-card>`, `<x-input>`) sesuai `DESIGN.md` bagian 3, dipakai bersama oleh kedua area.
+- Redirect berbasis role setelah login (Superadmin → `/superadmin/dashboard`, Owner/Kasir → `/app/dashboard`).
 
 ## Fase 1 - Superadmin & Manajemen Tenant
 
-- CRUD business (tenant) oleh Superadmin.
+- CRUD business (tenant) oleh Superadmin — **form Create Business menyertakan pembuatan akun Owner awal sekaligus** (nama, email, password Owner), sesuai keputusan Register tertutup di `AGENTS.md` bagian 3.1. Satu form, satu submit, langsung menghasilkan business + user Owner pertama yang terhubung ke business tersebut.
 - Aktifkan/nonaktifkan business + efeknya ke akses user terkait.
 - Dashboard Superadmin sederhana (jumlah tenant, status aktif/nonaktif).
-- Activity log untuk aksi aktivasi/nonaktivasi.
+- Activity log untuk aksi aktivasi/nonaktivasi, dan untuk pembuatan business baru.
 
 ## Fase 2 - Master Data & Manajemen Cabang/User
 
@@ -73,13 +75,13 @@ Urutan ini dirancang agar setiap fase menghasilkan sistem yang bisa langsung dit
 - Review menyeluruh isolasi data multi-tenant (audit ulang semua query, pastikan tidak ada kebocoran antar business).
 - Setup backup database terjadwal.
 - Optimasi query & index database berdasarkan pola akses nyata.
-- Uji PWA (install prompt, app-shell caching, fallback offline sederhana).
+- Uji responsivitas di berbagai breakpoint (khususnya halaman Kasir di tablet/HP).
 - Uji peran & permission menyeluruh sesuai `PERMISSIONS.md`.
 
 ## Fase Lanjutan (Backlog, Di Luar Cakupan Versi Awal)
 
 - Sistem subscription/billing untuk tenant.
-- Mode offline / sinkronisasi data pada PWA.
+- PWA (installable app) — bila di masa depan dibutuhkan kembali.
 - Superadmin impersonate akun tenant.
 - API publik untuk integrasi pihak ketiga.
 - Approval workflow untuk pembelian besar.
