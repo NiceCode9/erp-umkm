@@ -52,24 +52,34 @@
         <div class="lg:col-span-2 bg-card border border-border rounded-[var(--radius)] p-6 shadow-sm">
             <h2 class="text-lg font-semibold text-foreground mb-4">Aktivitas Terbaru</h2>
             <div class="text-center text-muted-foreground py-12">
-                <i class="fas fa-inbox text-3xl mb-3 block opacity-50"></i>
                 <p>Belum ada aktivitas</p>
             </div>
         </div>
         <div class="bg-card border border-border rounded-[var(--radius)] p-6 shadow-sm">
             <h2 class="text-lg font-semibold text-foreground mb-4">Menu Cepat</h2>
             <div class="space-y-2">
-                <a href="#" class="block px-4 py-2 rounded-[var(--radius)] bg-muted text-foreground hover:bg-primary hover:text-primary-foreground transition text-sm">
-                    <i class="fas fa-plus mr-2"></i> Transaksi Baru
-                </a>
-                <a href="#" class="block px-4 py-2 rounded-[var(--radius)] bg-muted text-foreground hover:bg-primary hover:text-primary-foreground transition text-sm">
-                    <i class="fas fa-box mr-2"></i> Lihat Stok
-                </a>
-                <a href="#" class="block px-4 py-2 rounded-[var(--radius)] bg-muted text-foreground hover:bg-primary hover:text-primary-foreground transition text-sm">
-                    <i class="fas fa-history mr-2"></i> Riwayat Penjualan
-                </a>
+                <a href="{{ route('app.purchases.create') }}" class="block px-4 py-2 rounded-[var(--radius)] bg-muted text-foreground hover:bg-primary hover:text-primary-foreground transition text-sm">+ Pembelian Baru</a>
+                <a href="{{ route('app.raw-materials.index') }}" class="block px-4 py-2 rounded-[var(--radius)] bg-muted text-foreground hover:bg-primary hover:text-primary-foreground transition text-sm">Lihat Stok Bahan Baku</a>
+                <a href="{{ route('app.purchases.index') }}" class="block px-4 py-2 rounded-[var(--radius)] bg-muted text-foreground hover:bg-primary hover:text-primary-foreground transition text-sm">Riwayat Pembelian</a>
             </div>
         </div>
     </div>
+
+    @if(isset($lowStockMaterials) && $lowStockMaterials->count())
+        <x-card class="mt-6 border-warning/30">
+            <h2 class="text-lg font-semibold text-warning mb-3">⚠️ Stok Bahan Baku Menipis</h2>
+            <div class="space-y-2">
+                @foreach($lowStockMaterials as $rm)
+                    <div class="flex justify-between items-center text-sm p-2 bg-warning/5 rounded-[var(--radius)]">
+                        <span class="font-medium text-foreground">{{ $rm->name }}</span>
+                        <span class="text-warning font-semibold">Stok saat ini di bawah minimum ({{ $rm->minimum_stock }} {{ $rm->base_unit }})</span>
+                    </div>
+                @endforeach
+            </div>
+            <div class="mt-3">
+                <a href="{{ route('app.purchases.create') }}" class="text-sm text-secondary hover:text-secondary/80">→ Beli stok sekarang</a>
+            </div>
+        </x-card>
+    @endif
 </div>
 @endsection

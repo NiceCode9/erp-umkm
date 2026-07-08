@@ -29,6 +29,8 @@ export default {
                 'muted-foreground': 'var(--muted-foreground)',
                 accent: 'var(--accent)',
                 'accent-foreground': 'var(--accent-foreground)',
+                info: 'var(--info)',
+                'info-foreground': 'var(--info-foreground)',
                 warning: 'var(--warning)',
                 'warning-foreground': 'var(--warning-foreground)',
                 destructive: 'var(--destructive)',

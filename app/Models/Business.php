@@ -50,4 +50,10 @@ class Business extends Model
     {
         return $this->belongsTo(User::class, 'deactivated_by');
     }
+
+    public function ownerUser()
+    {
+        return $this->hasOne(User::class, 'business_id')
+            ->whereHas('roles', fn ($q) => $q->where('name', 'Owner'));
+    }
 }

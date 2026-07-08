@@ -91,6 +91,7 @@ Role (Superadmin/Owner/Kasir) dikelola via `spatie/laravel-permission` (tabel `r
 | base_unit | string | Satuan dasar (mis. `pcs`) |
 | selling_price | decimal | Harga jual satuan dasar |
 | image | string, nullable | via medialibrary |
+| recipe_yield_quantity | decimal, default 1 | Jumlah unit produk jadi yang dihasilkan dari SATU KALI proses resep (lihat `product_recipes` di bawah). Default 1 berarti resep diinput per-unit langsung (setara skema lama); isi > 1 kalau Owner berpikir dalam skala batch/adonan (mis. "1 adonan = 20 pcs"). |
 
 ### `product_units` (Multi-Satuan / Eceran-Borongan)
 | Kolom | Tipe | Keterangan |
@@ -101,13 +102,21 @@ Role (Superadmin/Owner/Kasir) dikelola via `spatie/laravel-permission` (tabel `r
 | conversion_to_base | decimal | mis. 1 dus = 12 pcs → nilai 12 |
 | price_override | decimal, nullable | Harga khusus per satuan ini bila beda dari kalkulasi otomatis |
 
-### `product_stocks`
+### `product_batches`
+> Menggantikan konsep `product_stocks` versi lama (angka stok tunggal tanpa batch). Sekarang produk jadi memakai batch tracking penuh, setara `raw_material_batches`, karena FEFO diterapkan juga untuk produk jadi (lihat `BUSINESS-RULES.md` bagian 2).
+
 | Kolom | Tipe | Keterangan |
 |---|---|---|
 | id | bigint PK | |
 | product_id | FK products | |
 | branch_id | FK branches | |
-| quantity | decimal | Stok dalam base_unit |
+| production_order_id | FK production_orders, nullable | Null jika batch berasal dari sumber lain (mis. hasil distribusi masuk dari cabang lain, opname penambahan) |
+| production_code | string | Denormalisasi dari `production_orders.production_code` untuk tampilan cepat tanpa join, mis. `PRD-20260708-0001` |
+| quantity_remaining | decimal | Sisa stok batch ini |
+| expired_date | date, nullable | Dasar pengurutan FEFO. Diisi Owner saat production order dibuat (opsional — tidak semua produk punya masa kedaluwarsa) |
+| produced_at | timestamp | |
+
+> **Total stok produk** (untuk list/dashboard) dihitung sebagai `SUM(quantity_remaining)` per `product_id` + `branch_id`, sama persis pola `raw_material_batches` — TIDAK ADA lagi tabel agregat stok produk terpisah, konsisten dengan cara bahan baku dihitung.
 
 ## 3. Produksi (BOM)
 
@@ -117,8 +126,10 @@ Role (Superadmin/Owner/Kasir) dikelola via `spatie/laravel-permission` (tabel `r
 | id | bigint PK | |
 | product_id | FK products | |
 | raw_material_id | FK raw_materials | |
-| qty_per_unit | decimal | Kebutuhan bahan baku per 1 unit produk jadi |
+| qty_per_batch | decimal | Kebutuhan bahan baku untuk SATU KALI proses resep (menghasilkan `products.recipe_yield_quantity` unit produk jadi) — BUKAN per 1 unit. Kalau `recipe_yield_quantity = 1`, nilainya otomatis sama dengan kebutuhan per unit. |
 | unit | string | Satuan pada resep (bisa beda dari base_unit bahan baku, perlu konversi) |
+
+> Kalkulasi kebutuhan efektif per unit produk: `qty_per_batch / recipe_yield_quantity`. Lihat `BUSINESS-RULES.md` bagian 1.1 untuk formula lengkap saat production order dijalankan.
 
 ### `production_orders`
 | Kolom | Tipe | Keterangan |
@@ -128,7 +139,9 @@ Role (Superadmin/Owner/Kasir) dikelola via `spatie/laravel-permission` (tabel `r
 | branch_id | FK branches | |
 | product_id | FK products | |
 | user_id | FK users | Owner yang menjalankan produksi |
+| production_code | string, unique | Kode produksi otomatis, human-readable, mis. `PRD-20260708-0001` (format: `PRD-{YYYYMMDD}-{urutan 4 digit per hari}`). Immutable setelah dibuat, dipakai sebagai label tampilan di `stock_movements` ("Produksi (PRD-20260708-0001)") |
 | quantity_target | decimal | Jumlah produk yang ingin diproduksi |
+| expired_date | date, nullable | Tanggal kedaluwarsa produk hasil produksi ini (opsional — tidak semua produk expired). Diisi Owner saat membuat production order, diturunkan ke `product_batches.expired_date` |
 | status | enum(`draft`,`confirmed`,`cancelled`) | |
 | produced_at | timestamp | |
 
@@ -225,6 +238,14 @@ Struktur serupa `purchases`/`purchase_items`, mereferensikan `purchase_id` asal,
 | unit_price | decimal | **Snapshot** harga saat transaksi |
 | subtotal | decimal | |
 
+### `sale_item_batches` (jejak konsumsi FEFO per item penjualan)
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| id | bigint PK | |
+| sale_item_id | FK sale_items | |
+| product_batch_id | FK product_batches | |
+| quantity_deducted | decimal | Satu `sale_item` bisa mengambil dari LEBIH DARI SATU batch kalau satu batch tidak cukup (sama pola dengan `production_consumptions`) |
+
 ### `sale_payments` (cicilan piutang dari pembeli)
 | Kolom | Tipe | Keterangan |
 |---|---|---|
@@ -281,6 +302,15 @@ Struktur serupa `sales`/`sale_items`, mereferensikan `sale_id` asal.
 | item_id | bigint | |
 | quantity | decimal | |
 
+### `stock_distribution_item_batches` (jejak konsumsi FEFO per item distribusi)
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| id | bigint PK | |
+| stock_distribution_item_id | FK stock_distribution_items | |
+| batch_type | enum(`raw_material`,`product`) | Samakan dengan `item_type` induknya |
+| batch_id | bigint | Merujuk ke `raw_material_batches.id` atau `product_batches.id` sesuai `batch_type` |
+| quantity | decimal | Qty yang diambil dari batch ini (bisa lebih dari satu batch per item distribusi) |
+
 ## 7. Stok & Audit
 
 ### `stock_movements` (ledger terpusat, sumber kebenaran pergerakan stok)
@@ -291,7 +321,7 @@ Struktur serupa `sales`/`sale_items`, mereferensikan `sale_id` asal.
 | branch_id | FK branches | |
 | item_type | enum(`raw_material`,`product`) | |
 | item_id | bigint | ID bahan baku atau produk |
-| batch_id | FK raw_material_batches, nullable | |
+| batch_id | bigint, nullable | Merujuk ke `raw_material_batches.id` jika `item_type = raw_material`, atau ke `product_batches.id` jika `item_type = product` (polymorphic berdasarkan `item_type`, bukan foreign key tunggal — tangani di level aplikasi/Eloquent relationship kondisional) |
 | movement_type | enum(`in`,`out`) | |
 | quantity | decimal | |
 | reference_type | string | mis. `purchase`, `production`, `sale`, `stock_opname`, `shipment` |
@@ -333,19 +363,24 @@ Ditangani otomatis oleh `spatie/laravel-activitylog` (tabel `activity_log` bawaa
 
 ```
 businesses 1---n branches
-branches   1---n users (kasir), raw_material_batches, product_stocks, sales, purchases, shipments
+branches   1---n users (kasir), raw_material_batches, product_batches, sales, purchases, shipments
 products   1---n product_recipes---1 raw_materials
 products   1---n product_units
+products   1---n product_batches
 production_orders 1---n production_consumptions---1 raw_material_batches
+production_orders 1---n product_batches (hasil produksi)
 purchases  1---n purchase_items, purchase_payments
 sales      1---n sale_items, sale_payments
+sale_items 1---n sale_item_batches---1 product_batches
 sales      1---n shipments (opsional)
 branches   1---n stock_distributions (sebagai origin), 1---n stock_distributions (sebagai destination)
 stock_distributions 1---n stock_distribution_items
+stock_distribution_items 1---n stock_distribution_item_batches
 ```
 
 ## 11. Catatan Implementasi
 
-- Semua pengurangan/penambahan stok (produksi, pembelian, penjualan, opname, retur) WAJIB tercatat di `stock_movements` melalui `StockService` terpusat (lihat `AGENTS.md`).
-- Urutan FEFO dihitung dari `raw_material_batches.expired_date ASC` saat melakukan pengurangan stok produksi.
+- Semua pengurangan/penambahan stok (produksi, pembelian, penjualan, opname, retur, distribusi) WAJIB tercatat di `stock_movements` melalui `StockService` terpusat (lihat `AGENTS.md`).
+- **FEFO berlaku untuk KEDUA jenis batch**: `raw_material_batches.expired_date ASC` (bahan baku) DAN `product_batches.expired_date ASC` (produk jadi) — diterapkan saat produksi (konsumsi bahan baku), penjualan (konsumsi produk jadi), dan distribusi antar cabang (konsumsi bahan baku maupun produk jadi). Batch tanpa `expired_date` selalu prioritas paling akhir, konsisten di semua konteks ini.
 - Konversi satuan antara resep, stok bahan baku, dan `product_units` harus konsisten — pertimbangkan tabel `unit_conversions` global jika kombinasi satuan makin kompleks di fase lanjutan.
+- **`production_code`** (di `production_orders`) di-generate otomatis, format `PRD-{YYYYMMDD}-{urutan 4 digit per hari}`, dan didenormalisasi ke `product_batches.production_code` untuk tampilan cepat di `stock_movements` tanpa perlu join berlapis (mis. label "Produksi (PRD-20260708-0001)").

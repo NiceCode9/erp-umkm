@@ -16,12 +16,22 @@
                 <p class="text-sm text-muted-foreground">{{ auth()->user()->business->name ?? '' }}</p>
             </div>
             <nav class="p-4">
-                <ul class="space-y-2">
-                    <li>
-                        <a href="{{ route('app.dashboard') }}" class="flex items-center px-4 py-2 rounded-[var(--radius)] {{ request()->routeIs('app.dashboard') ? 'bg-primary text-primary-foreground' : 'hover:bg-muted' }}">
-                            <span>Dashboard</span>
-                        </a>
-                    </li>
+                <ul class="space-y-1">
+                    @role('Owner')
+                        <li><a href="{{ route('app.dashboard') }}" class="flex items-center px-4 py-2 rounded-[var(--radius)] text-sm {{ request()->routeIs('app.dashboard') ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted' }}">Dashboard</a></li>
+                        <li><a href="{{ route('app.branches.index') }}" class="flex items-center px-4 py-2 rounded-[var(--radius)] text-sm {{ request()->routeIs('app.branches.*') ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted' }}">Cabang</a></li>
+                        <li><a href="{{ route('app.kasir.index') }}" class="flex items-center px-4 py-2 rounded-[var(--radius)] text-sm {{ request()->routeIs('app.kasir.*') ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted' }}">Kasir</a></li>
+                        <li><a href="{{ route('app.raw-materials.index') }}" class="flex items-center px-4 py-2 rounded-[var(--radius)] text-sm {{ request()->routeIs('app.raw-materials.*') ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted' }}">Bahan Baku</a></li>
+                        <li><a href="{{ route('app.products.index') }}" class="flex items-center px-4 py-2 rounded-[var(--radius)] text-sm {{ request()->routeIs('app.products.*') ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted' }}">Produk</a></li>
+                        <li><a href="{{ route('app.suppliers.index') }}" class="flex items-center px-4 py-2 rounded-[var(--radius)] text-sm {{ request()->routeIs('app.suppliers.*') ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted' }}">Supplier</a></li>
+                        <li><a href="{{ route('app.customers.index') }}" class="flex items-center px-4 py-2 rounded-[var(--radius)] text-sm {{ request()->routeIs('app.customers.*') ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted' }}">Customer</a></li>
+                        <li class="pt-2 mt-2 border-t border-border"><a href="{{ route('app.purchases.index') }}" class="flex items-center px-4 py-2 rounded-[var(--radius)] text-sm {{ request()->routeIs('app.purchases.*') ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted' }}">Pembelian</a></li>
+                        <li><a href="{{ route('app.debts.index') }}" class="flex items-center px-4 py-2 rounded-[var(--radius)] text-sm {{ request()->routeIs('app.debts.*') ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted' }}">Utang Supplier</a></li>
+                        <li><a href="{{ route('app.production.index') }}" class="flex items-center px-4 py-2 rounded-[var(--radius)] text-sm {{ request()->routeIs('app.production.*') ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted' }}">Produksi</a></li>
+                        <li><a href="{{ route('app.stock-movements.index') }}" class="flex items-center px-4 py-2 rounded-[var(--radius)] text-sm {{ request()->routeIs('app.stock-movements.*') ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted' }}">Riwayat Stok</a></li>
+                    @elserole('Kasir')
+                        <li><a href="{{ route('app.dashboard') }}" class="flex items-center px-4 py-2 rounded-[var(--radius)] text-sm {{ request()->routeIs('app.dashboard') ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted' }}">Dashboard</a></li>
+                    @endrole
                 </ul>
             </nav>
         </aside>

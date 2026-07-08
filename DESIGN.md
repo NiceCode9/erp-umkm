@@ -103,6 +103,13 @@ Menggunakan CSS custom properties (`:root`), terinspirasi palet Duolingo — cer
 ### Loading State
 - Aksi yang memanggil server (submit form, load data Ajax/Datatable) menampilkan spinner/disable tombol sementara — mencegah double submit (penting untuk transaksi kasir & pembelian).
 
+### Form Repeater — `<x-form-repeater>`
+- Dipakai untuk semua form yang butuh input banyak baris sekaligus dalam satu submit: form pembelian (banyak bahan baku), form resep produk (banyak baris bahan baku + qty), dan form serupa di masa depan (mis. form retur multi-item).
+- Pola: tombol "+ Tambah Baris" menambah baris input baru secara dinamis (client-side, pakai vanilla JS/alpine.js — lihat catatan di Modal Konfirmasi), tombol "×" di tiap baris untuk hapus baris tersebut (minimal sisakan 1 baris).
+- Field di tiap baris tetap pakai `<x-input>` / dropdown standar, dibungkus dalam array name (`items[0][raw_material_id]`, `items[0][qty]`, dst.) supaya diterima sebagai array di backend saat submit.
+- Validasi tetap per baris (`invalid-feedback` di bawah field yang error), bukan satu alert umum untuk semua baris.
+- SEMUA baris tersimpan dalam **satu submit/transaction** — bukan simpan baris demi baris.
+
 ## 4. Halaman Kasir (Prioritas UX)
 
 - Layar transaksi kasir adalah halaman paling sering dipakai — desain harus:
@@ -114,7 +121,7 @@ Menggunakan CSS custom properties (`:root`), terinspirasi palet Duolingo — cer
 
 ## 5. Navigasi
 
-- Sidebar navigasi untuk Owner: dikelompokkan per domain (Dashboard, Bahan Baku, Produksi, Pembelian, Penjualan, Pengiriman, Distribusi Cabang, Keuangan, Pengaturan).
+- Sidebar navigasi untuk Owner: dikelompokkan per domain (Dashboard, Bahan Baku, Produksi, Pembelian, Penjualan, Pengiriman, Distribusi Cabang, **Riwayat Stok** (ledger umum lintas item, lihat `PRD.md` bagian 6.3), Keuangan, Pengaturan).
 - Navigasi Kasir: dibuat sangat ringkas — hanya Kasir (transaksi), Riwayat Penjualan, Profil. Jangan tampilkan menu yang tidak relevan dengan role Kasir (lihat `PERMISSIONS.md`).
 - **Menu dinamis:** karena sistem permission bisa berubah, sidebar sebaiknya di-generate dari permission yang dimiliki user (bukan hardcode per role di Blade), agar konsisten dengan `PERMISSIONS.md`.
 
@@ -136,7 +143,18 @@ Menggunakan CSS custom properties (`:root`), terinspirasi palet Duolingo — cer
 - Semua ikon aksi (edit/hapus/dsb) disertai `aria-label` atau tooltip teks, tidak hanya ikon tanpa keterangan.
 - Ukuran target sentuh minimal 44x44px untuk elemen interaktif di area Kasir.
 
-## 9. Dokumen Terkait
+## 9. Format Angka & Mata Uang (Locale Indonesia)
+
+Berlaku untuk SELURUH tampilan angka di aplikasi — konsisten di semua halaman, tidak boleh berbeda-beda cara format antar modul.
+
+- **Format Indonesia**: titik (`.`) sebagai pemisah ribuan, koma (`,`) sebagai pemisah desimal. Contoh: `Rp 12.000`, qty `12,5`.
+- **Mata uang (Rupiah)**: TIDAK menampilkan desimal sama sekali (Rupiah tidak punya sen dalam praktik sehari-hari) — selalu bulat, mis. `Rp 12.000`, bukan `Rp 12.000,00`.
+- **Kuantitas/angka non-mata uang** (stok, qty resep, dll.): tampilkan **tanpa desimal kalau nilainya bulat** (`12`, bukan `12,00`), dan **tampilkan desimal HANYA kalau nilainya memang pecahan** (`12,5`, bukan dipaksa jadi `12,50` kecuali presisi dua desimal memang relevan, mis. harga per satuan kecil). Jangan tampilkan trailing zero yang tidak perlu (`12.00` → `12`, `12.50` → `12,5`).
+- **Implementasi**: buat SATU helper terpusat (mis. `format_number($value)` dan `format_currency($value)` di `app/Helpers/` atau sebagai Blade directive `@rupiah($value)` / `@qty($value)`) — dipakai di SEMUA tempat yang menampilkan angka. Jangan format angka manual berulang-ulang di tiap Blade view.
+- **Input form**: field angka (harga, qty) tetap terima input dengan titik/koma sesuai konvensi Indonesia di sisi tampilan, tapi VALUE yang dikirim ke backend & disimpan di database tetap format numerik standar (`.` sebagai desimal, tanpa pemisah ribuan) — konversi format hanya terjadi di layer presentasi (JS formatting saat mengetik, lalu di-parse ulang ke raw number sebelum submit), BUKAN di level penyimpanan data.
+- **Library JS/chart** (Chart.js, DataTables, dll.) tetap bekerja dengan angka mentah secara internal — hanya label/tooltip yang ditampilkan ke user yang perlu diformat ulang ke locale Indonesia.
+
+## 10. Dokumen Terkait
 
 - `AGENTS.md` — aturan wajib Blade component & konfigurasi build Vite untuk seluruh area.
 - `PERMISSIONS.md` — dasar untuk menu dinamis berbasis permission.

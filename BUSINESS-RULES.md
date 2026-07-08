@@ -6,19 +6,23 @@ Dokumen ini merinci logika yang WAJIB diimplementasikan secara konsisten via Ser
 
 ### 1.1 Alur Umum
 1. Owner membuat `production_order` dengan `product_id` dan `quantity_target`.
-2. Sistem ambil semua baris `product_recipes` untuk `product_id` tersebut.
+2. Sistem ambil semua baris `product_recipes` untuk `product_id` tersebut, beserta `products.recipe_yield_quantity` produk tersebut.
 3. Untuk setiap baris resep, hitung total kebutuhan bahan baku:
 
    ```
-   total_kebutuhan = qty_per_unit (pada resep) × quantity_target
+   qty_per_unit_efektif = qty_per_batch / recipe_yield_quantity
+   total_kebutuhan = qty_per_unit_efektif × quantity_target
    ```
+
+   Contoh: resep menghasilkan 20 pcs (`recipe_yield_quantity = 20`) dengan kebutuhan tepung `qty_per_batch = 2000` gram. Maka `qty_per_unit_efektif = 100` gram/pcs. Jika `quantity_target = 50` pcs, `total_kebutuhan = 5000` gram tepung.
 
 4. Konversi `total_kebutuhan` ke `base_unit` bahan baku jika satuan resep berbeda (lihat bagian 1.3).
 5. Ambil batch bahan baku terkait di cabang tersebut, urutkan berdasarkan `expired_date ASC` (FEFO — batch yang lebih cepat kedaluwarsa dipakai lebih dulu; batch tanpa `expired_date` diperlakukan sebagai prioritas terakhir).
 6. Kurangi `quantity_remaining` pada batch secara berurutan sampai `total_kebutuhan` terpenuhi. Jika satu batch tidak cukup, lanjut ke batch berikutnya.
 7. Catat setiap pengurangan per batch ke `production_consumptions`.
 8. Catat pergerakan stok keluar ke `stock_movements` (`reference_type = production`, `movement_type = out`).
-9. Tambahkan hasil produksi (`quantity_target`, atau `quantity_actual` jika berbeda dari target karena kendala stok) ke `product_stocks` cabang terkait, dan catat sebagai `movement_type = in` di `stock_movements` (`reference_type = production`).
+9. **Buat `production_code` otomatis** untuk production order ini (format `PRD-{YYYYMMDD}-{urutan 4 digit per hari}`, unique, immutable).
+10. Tambahkan hasil produksi (`quantity_target`, atau `quantity_actual` jika berbeda dari target karena kendala stok) sebagai **`product_batches` BARU** di cabang terkait — field `production_order_id`, `production_code` (denormalisasi), `expired_date` (dari input Owner di production order, boleh null), `produced_at`. Catat sebagai `movement_type = in` di `stock_movements` (`reference_type = production`, `batch_id` merujuk ke `product_batches` yang baru dibuat ini) — label tampilan pergerakan ini adalah **"Produksi ({production_code})"**, mis. "Produksi (PRD-20260708-0001)".
 
 ### 1.2 Validasi Stok Tidak Cukup
 - Jika total stok bahan baku (across semua batch di cabang tersebut) tidak mencukupi `total_kebutuhan`, **tolak** production order (status tetap `draft`, tidak boleh partial-deduct tanpa persetujuan eksplisit).
@@ -36,9 +40,22 @@ Dokumen ini merinci logika yang WAJIB diimplementasikan secara konsisten via Ser
 
 ## 2. FEFO (First Expired First Out)
 
-- Berlaku untuk seluruh pengurangan stok bahan baku yang bersumber dari batch (`raw_material_batches`): produksi, retur, maupun stok opname yang mengoreksi ke bawah.
-- Urutan pengambilan: `expired_date ASC NULLS LAST` — batch tanpa tanggal kedaluwarsa diambil paling akhir.
+- **Berlaku untuk KEDUA jenis batch**: `raw_material_batches` (bahan baku) DAN `product_batches` (produk jadi) — bukan cuma bahan baku.
+- Konteks penerapan:
+  - Bahan baku: produksi (konsumsi resep), retur pembelian, stok opname yang mengoreksi ke bawah, distribusi antar cabang (bagian 7.1).
+  - Produk jadi: **penjualan** (lihat bagian baru di dokumen Fase Penjualan — setiap `sale_item` mengambil dari `product_batches` mengikuti FEFO, tercatat di `sale_item_batches`), retur penjualan, stok opname, distribusi antar cabang (bagian 7.1).
+- Urutan pengambilan: `expired_date ASC NULLS LAST` — batch tanpa tanggal kedaluwarsa diambil paling akhir. Aturan ini SAMA PERSIS untuk kedua jenis batch.
 - Setiap pembelian bahan baku baru **selalu membuat batch baru** (tidak digabung ke batch lama), meskipun bahan baku dan supplier sama, kecuali `expired_date` dan `purchase_price` identik dengan batch yang sudah ada dan belum digunakan sama sekali.
+- Setiap production order **selalu membuat `product_batches` baru** (satu production order = satu batch produk baru), tidak pernah digabung ke batch produk lain meski produk & tanggal produksi sama — supaya `production_code` tetap 1:1 dengan asal produksinya untuk keperluan traceability.
+
+## 2.1 Konsumsi FEFO saat Penjualan (Produk Jadi)
+
+> Detail lengkap alur penjualan ada di dokumen Fase Penjualan — bagian ini hanya menetapkan aturan FEFO-nya agar konsisten sejak awal.
+
+- Saat `sale_item` dibuat (checkout kasir), sistem mengambil `product_batches` produk tersebut di cabang yang sama, urutkan `expired_date ASC NULLS LAST` (sama seperti bahan baku).
+- Kurangi `quantity_remaining` batch demi batch sampai `sale_item.quantity` terpenuhi. Jika satu batch tidak cukup, lanjut ke batch berikutnya. Catat tiap pengambilan ke `sale_item_batches`.
+- Jika total stok produk (across semua batch di cabang itu) tidak cukup untuk memenuhi keranjang kasir, **tolak checkout** untuk item tersebut (tampilkan stok tersedia ke Kasir) — sama seperti validasi stok produksi di bagian 1.2, tidak boleh menjual melebihi stok yang ada.
+- Catat `stock_movements` (`movement_type = out`, `reference_type = sale`, `batch_id` merujuk ke `product_batches` yang terpakai).
 
 ## 3. Diskon
 
@@ -104,10 +121,10 @@ Dokumen ini merinci logika yang WAJIB diimplementasikan secara konsisten via Ser
 ## 7.1 Distribusi Stok Antar Cabang
 
 - Dipicu oleh Owner (lintas cabang miliknya sendiri) melalui `stock_distributions`, terpisah dari `shipments` (yang khusus pengiriman ke pembeli).
-- Dapat mencakup bahan baku maupun produk jadi (`stock_distribution_items.item_type`).
+- Dapat mencakup bahan baku maupun produk jadi (`stock_distribution_items.item_type`) — **KEDUANYA punya batch** (`raw_material_batches` / `product_batches`) dan KEDUANYA mengikuti FEFO saat dipilih untuk dipindahkan (bagian 2).
 - Alur status: `pending` → `shipped` → `received`.
-- **Saat status berubah ke `shipped`**: kurangi stok di `origin_branch_id` (catat `stock_movements` `movement_type = out`, `reference_type = stock_distribution`). Untuk bahan baku dengan batch, ikuti aturan FEFO (bagian 2) saat memilih batch mana yang dipindahkan.
-- **Saat status berubah ke `received`**: tambahkan stok di `destination_branch_id` (catat `stock_movements` `movement_type = in`, `reference_type = stock_distribution`). Jika item adalah bahan baku dengan batch, buat/lanjutkan entri batch baru di cabang tujuan dengan `expired_date` dan `purchase_price` mengikuti batch asal (agar FEFO tetap valid di cabang tujuan).
+- **Saat status berubah ke `shipped`**: kurangi stok di `origin_branch_id` (catat `stock_movements` `movement_type = out`, `reference_type = stock_distribution`). Pilih batch (bahan baku ATAU produk jadi) mengikuti FEFO (bagian 2), catat rincian batch yang dipindahkan ke `stock_distribution_item_batches`.
+- **Saat status berubah ke `received`**: tambahkan stok di `destination_branch_id` (catat `stock_movements` `movement_type = in`, `reference_type = stock_distribution`). Buat entri batch BARU di cabang tujuan (baik `raw_material_batches` maupun `product_batches`, tergantung jenis item) dengan `expired_date` mengikuti batch asal (dan `purchase_price`/`production_code` ikut diturunkan sesuai jenisnya), agar FEFO & traceability tetap valid di cabang tujuan.
 - Stok dalam status `shipped` (sudah keluar dari asal, belum diterima tujuan) dianggap "dalam perjalanan" — tidak tersedia untuk dijual/produksi di cabang manapun sampai `received`.
 - Hanya Owner yang dapat menginisiasi dan mengonfirmasi penerimaan distribusi (Kasir tidak punya akses ke modul ini, lihat `PERMISSIONS.md`).
 

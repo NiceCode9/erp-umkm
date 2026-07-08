@@ -83,15 +83,15 @@ app/
 ## 6. Alur Data Antar Modul (Ringkasan)
 
 ```
-Pembelian Bahan Baku ──► raw_material_batches (FEFO) ──► Produksi (BOM) ──► product_stocks
+Pembelian Bahan Baku ──► raw_material_batches (FEFO) ──► Produksi (BOM) ──► product_batches (FEFO)
                                                                               │
                                                                               ▼
-                                                          Penjualan (Kasir) ──► sale_items, stock keluar
+                                                          Penjualan (Kasir) ──► sale_items ──► sale_item_batches (FEFO)
                                                                               │
                                                                               ▼
                                                           Pengiriman ke Pembeli (ecer/borongan)
 
-product_stocks / raw_material_batches ──► Distribusi Stok Antar Cabang ──► product_stocks / raw_material_batches (cabang lain)
+product_batches / raw_material_batches (FEFO) ──► Distribusi Stok Antar Cabang ──► product_batches / raw_material_batches (cabang lain)
 
 Semua pergerakan stok di atas ──► dicatat terpusat di stock_movements (audit trail)
 Semua transaksi finansial (purchases, sales) ──► purchase_payments / sale_payments ──► status utang-piutang

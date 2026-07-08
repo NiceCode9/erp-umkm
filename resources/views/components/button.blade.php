@@ -12,6 +12,7 @@ $variantClasses = match ($variant) {
     'primary' => 'bg-primary text-primary-foreground hover:bg-primary/90 border border-transparent',
     'secondary' => 'border border-border text-foreground hover:bg-muted bg-transparent',
     'danger' => 'bg-destructive text-destructive-foreground hover:bg-destructive/90 border border-transparent',
+    'info' => 'bg-info text-info-foreground hover:bg-info/90 border border-transparent',
     'ghost' => 'text-foreground hover:bg-muted bg-transparent border border-transparent',
     default => 'bg-primary text-primary-foreground hover:bg-primary/90 border border-transparent',
 };

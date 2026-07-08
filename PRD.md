@@ -72,6 +72,10 @@ Detail matrix permission akan dijabarkan lengkap di `PERMISSIONS.md`.
 
 ### 6.3 Bahan Baku & Stok
 - Data bahan baku per cabang: nama, satuan, stok saat ini, harga rata-rata/terakhir.
+- **Ringkasan stok**: list bahan baku menampilkan **total stok gabungan semua cabang** per baris (bukan kolom terpisah per cabang — supaya tampilan tetap ringkas berapapun jumlah cabangnya), disertai indikator ringkas kalau ada minimal satu cabang yang stoknya di bawah minimum (mis. "⚠️ 2 cabang stok rendah"). Rincian per cabang dilihat dengan **drill-down** ke halaman detail bahan baku (bukan di list utama) — breakdown ditampilkan sebagai daftar vertikal (baris = cabang), sehingga tetap rapi berapapun banyaknya cabang.
+- **Riwayat pergerakan stok**, ditampilkan di dua tempat:
+  - Tab/bagian "Riwayat Pergerakan" di halaman detail tiap bahan baku (dan nanti produk jadi) — hanya pergerakan item tersebut, untuk audit cepat per item.
+  - Menu terpisah "Riwayat Stok" (ledger umum) — lintas semua bahan baku/produk, bisa difilter cabang, jenis pergerakan (masuk/keluar), rentang tanggal, dan sumber (pembelian/produksi/penjualan/opname/distribusi) — untuk audit yang lebih luas.
 - Penerapan **FEFO** (First Expired First Out) untuk bahan baku yang memiliki tanggal kedaluwarsa — dikelola berbasis batch/lot.
 - Stok opname: penyesuaian manual stok dengan pencatatan alasan (rusak, hilang, selisih hitung).
 - Notifikasi stok minimum (reorder alert).

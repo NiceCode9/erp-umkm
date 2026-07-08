@@ -6,6 +6,8 @@
 <div class="max-w-2xl mx-auto">
     <x-card>
         <h2 class="text-lg font-semibold text-foreground mb-4">Form Edit Business</h2>
+        <p class="text-sm text-muted-foreground mb-6">Edit data business. Untuk perubahan akun Owner (email/password) gunakan menu terpisah.</p>
+
         <form action="{{ route('superadmin.businesses.update', $business) }}" method="POST">
             @csrf
             @method('PUT')
