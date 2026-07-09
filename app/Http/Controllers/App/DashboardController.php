@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\App;
 
 use App\Http\Controllers\Controller;
+use App\Models\Product;
 use App\Models\RawMaterial;
 use App\Models\RawMaterialBatch;
 use App\Services\StockService;
@@ -31,12 +32,25 @@ class DashboardController extends Controller
                                 ->where('is_active', true);
                         })
                         ->sum('quantity_remaining');
-
                     return $totalStock < $rm->minimum_stock;
                 })
                 ->values();
 
-            return view('app.dashboard-owner', compact('lowStockMaterials'));
+            $now = now();
+            $halalExpiringSoon = Product::where('business_id', $businessId)
+                ->whereNotNull('halal_cert_expired_date')
+                ->where('halal_cert_expired_date', '>=', $now)
+                ->where('halal_cert_expired_date', '<=', $now->copy()->addDays(30))
+                ->get();
+
+            $halalExpired = Product::where('business_id', $businessId)
+                ->whereNotNull('halal_cert_expired_date')
+                ->where('halal_cert_expired_date', '<', $now)
+                ->get();
+
+            return view('app.dashboard-owner', compact(
+                'lowStockMaterials', 'halalExpiringSoon', 'halalExpired'
+            ));
         }
 
         return view('app.dashboard-kasir');

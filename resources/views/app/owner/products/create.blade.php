@@ -11,7 +11,15 @@
                 <x-input label="SKU (opsional)" name="sku" value="{{ old('sku') }}" />
                 <x-input label="Satuan (pcs, kg, dll)" name="base_unit" value="{{ old('base_unit') }}" required />
                 <x-input label="Harga Jual (Rp)" name="selling_price" type="number" step="0.01" value="{{ old('selling_price') }}" required />
-                <x-input label="Hasil per Resep (default 1)" name="recipe_yield_quantity" type="number" step="0.01" min="0.01" value="{{ old('recipe_yield_quantity', 1) }}" helperText="Berapa unit produk jadi dari 1 kali proses resep? Misal: 20 jika 1 resep adonan jadi 20 roti." />
+
+                <div class="border-t border-border pt-4">
+                    <h3 class="text-sm font-semibold text-foreground mb-3">Sertifikasi Halal (opsional)</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <x-input label="Nomor Sertifikat" name="halal_cert_number" value="{{ old('halal_cert_number') }}" />
+                        <x-input label="Lembaga Penerbit" name="halal_cert_issuer" value="{{ old('halal_cert_issuer') }}" />
+                        <x-input label="Tanggal Kedaluwarsa" name="halal_cert_expired_date" type="date" value="{{ old('halal_cert_expired_date') }}" />
+                    </div>
+                </div>
 
                 <div x-data="{ units: [] }">
                     <div class="flex items-center justify-between mb-2">

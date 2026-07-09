@@ -9,6 +9,46 @@
                 <p class="text-sm text-muted-foreground">
                     SKU: {{ $product->sku ?? '-' }} — Satuan: {{ $product->base_unit }} — Harga: {{ format_currency($product->selling_price) }}
                 </p>
+                @if($product->halal_cert_number)
+                    <div class="mt-3 p-4 bg-card border border-border rounded-[var(--radius)] shadow-sm">
+                        <h4 class="text-sm font-semibold text-foreground mb-3">Sertifikasi Halal</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                            <div>
+                                <span class="text-muted-foreground">Nomor Sertifikat:</span>
+                                <p class="font-medium text-foreground">{{ $product->halal_cert_number }}</p>
+                            </div>
+                            <div>
+                                <span class="text-muted-foreground">Lembaga Penerbit:</span>
+                                <p class="font-medium text-foreground">{{ $product->halal_cert_issuer ?? '-' }}</p>
+                            </div>
+                            <div>
+                                <span class="text-muted-foreground">Tanggal Kedaluwarsa:</span>
+                                <p class="font-medium text-foreground">
+                                    {{ $product->halal_cert_expired_date?->format('d M Y') ?? '-' }}
+                                    @if($product->halal_cert_expired_date)
+                                        @if($product->halal_cert_expired_date->isPast())
+                                            <x-badge variant="danger">Expired</x-badge>
+                                        @elseif($product->halal_cert_expired_date <= now()->addDays(30))
+                                            <x-badge variant="warning">Akan Expired</x-badge>
+                                        @else
+                                            <x-badge variant="success">Aktif</x-badge>
+                                        @endif
+                                    @endif
+                                </p>
+                            </div>
+                            <div>
+                                <span class="text-muted-foreground">Status:</span>
+                                <p class="mt-0.5">
+                                    @if($product->halal_cert_expired_date?->isPast())
+                                        <x-badge variant="danger">Sertifikat sudah kedaluwarsa</x-badge>
+                                    @else
+                                        <x-badge variant="success">Berlaku</x-badge>
+                                    @endif
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                @endif
             </div>
             <div class="flex gap-2">
                 <a href="{{ route('app.products.recipes.index', $product) }}"><x-button variant="secondary" size="sm">Resep</x-button></a>

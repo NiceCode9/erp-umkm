@@ -13,7 +13,7 @@
             previewItems: [],
             async loadRecipes(productId) {
                 if (!productId) { this.recipes = []; this.selectedRecipe = null; return; }
-                const resp = await fetch('/app/products/' + productId + '/recipes');
+                const resp = await fetch('{{ route('app.products.recipes.json', ['product' => '__ID__']) }}'.replace('__ID__', productId));
                 this.recipes = await resp.json();
                 this.selectedRecipe = null;
                 this.previewTotal = 0;

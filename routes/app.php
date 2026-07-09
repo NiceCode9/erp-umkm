@@ -34,9 +34,10 @@ Route::prefix('app')
 
             Route::resource('raw-materials', RawMaterialController::class);
             Route::resource('products', ProductController::class);
+            Route::get('products/{product}/recipes-json', [ProductionController::class, 'getRecipes'])->name('products.recipes.json');
             Route::get('products/{product}/recipes', [RecipeController::class, 'index'])->name('products.recipes.index');
             Route::post('products/{product}/recipes', [RecipeController::class, 'store'])->name('products.recipes.store');
-            Route::put('products/{product}/recipes/{recipe}', [RecipeController::class, 'update'])->name('products.recipes.update');
+            Route::post('products/{product}/recipes/{recipe}/toggle', [RecipeController::class, 'toggle'])->name('products.recipes.toggle');
             Route::delete('products/{product}/recipes/{recipe}', [RecipeController::class, 'destroy'])->name('products.recipes.destroy');
             Route::resource('suppliers', SupplierController::class);
             Route::resource('customers', CustomerController::class);

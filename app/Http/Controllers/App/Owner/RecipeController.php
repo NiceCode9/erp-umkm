@@ -4,8 +4,8 @@ namespace App\Http\Controllers\App\Owner;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
-use App\Models\ProductRecipe;
 use App\Models\RawMaterial;
+use App\Models\Recipe;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +17,7 @@ class RecipeController extends Controller
     {
         if ($product->business_id !== auth()->user()->business_id) abort(403);
 
-        $product->load('recipes.rawMaterial');
+        $product->load(['recipes' => fn ($q) => $q->withCount('items')->orderByDesc('is_active')->orderBy('name')]);
         $rawMaterials = RawMaterial::where('business_id', auth()->user()->business_id)->get();
 
         return view('app.owner.production.recipes', compact('product', 'rawMaterials'));
@@ -28,53 +28,55 @@ class RecipeController extends Controller
         if ($product->business_id !== auth()->user()->business_id) abort(403);
 
         $validated = $request->validate([
-            'recipes' => 'required|array|min:1',
-            'recipes.*.raw_material_id' => 'required|exists:raw_materials,id',
-            'recipes.*.qty_per_batch' => 'required|numeric|min:0.01',
-            'recipes.*.unit' => 'required|string|max:50',
+            'name' => 'required|string|max:255',
+            'yield_quantity' => 'required|numeric|min:0.01',
+            'items' => 'required|array|min:1',
+            'items.*.raw_material_id' => 'required|exists:raw_materials,id',
+            'items.*.qty_per_batch' => 'required|numeric|min:0.01',
+            'items.*.unit' => 'required|string|max:50',
         ]);
 
-        $rmIds = collect($validated['recipes'])->pluck('raw_material_id')->unique();
-
-        // Verify all raw materials belong to this business
-        $validRmCount = RawMaterial::where('business_id', auth()->user()->business_id)
+        $rmIds = collect($validated['items'])->pluck('raw_material_id')->unique();
+        $validCount = RawMaterial::where('business_id', auth()->user()->business_id)
             ->whereIn('id', $rmIds)->count();
 
-        if ($validRmCount !== $rmIds->count()) {
+        if ($validCount !== $rmIds->count()) {
             return back()->with('error', 'Beberapa bahan baku tidak valid.');
         }
 
         DB::transaction(function () use ($validated, $product) {
-            foreach ($validated['recipes'] as $recipe) {
-                ProductRecipe::create([
-                    'product_id' => $product->id,
-                    'raw_material_id' => $recipe['raw_material_id'],
-                    'qty_per_batch' => $recipe['qty_per_batch'],
-                    'unit' => $recipe['unit'],
+            $recipe = Recipe::create([
+                'product_id' => $product->id,
+                'name' => $validated['name'],
+                'yield_quantity' => $validated['yield_quantity'],
+                'is_active' => true,
+            ]);
+
+            foreach ($validated['items'] as $item) {
+                $recipe->items()->create([
+                    'raw_material_id' => $item['raw_material_id'],
+                    'qty_per_batch' => $item['qty_per_batch'],
+                    'unit' => $item['unit'],
                 ]);
             }
         });
 
-        $count = count($validated['recipes']);
-        return back()->with('success', "{$count} bahan resep berhasil ditambahkan.");
+        return redirect()
+            ->route('app.products.recipes.index', $product)
+            ->with('success', "Resep \"{$validated['name']}\" berhasil ditambahkan.");
     }
 
-    public function update(Request $request, Product $product, ProductRecipe $recipe): RedirectResponse
+    public function toggle(Product $product, Recipe $recipe): RedirectResponse
     {
         if ($product->business_id !== auth()->user()->business_id) abort(403);
 
-        $validated = $request->validate([
-            'raw_material_id' => 'required|exists:raw_materials,id',
-            'qty_per_batch' => 'required|numeric|min:0.01',
-            'unit' => 'required|string|max:50',
-        ]);
+        $recipe->update(['is_active' => !$recipe->is_active]);
 
-        $recipe->update($validated);
-
-        return back()->with('success', 'Resep berhasil diupdate.');
+        $status = $recipe->is_active ? 'diaktifkan' : 'dinonaktifkan';
+        return back()->with('success', "Resep \"{$recipe->name}\" berhasil {$status}.");
     }
 
-    public function destroy(Product $product, ProductRecipe $recipe): RedirectResponse
+    public function destroy(Product $product, Recipe $recipe): RedirectResponse
     {
         if ($product->business_id !== auth()->user()->business_id) abort(403);
         $recipe->delete();

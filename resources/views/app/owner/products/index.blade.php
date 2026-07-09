@@ -16,6 +16,7 @@
                     <th class="px-4 py-3 text-right font-semibold text-muted-foreground">Harga Jual</th>
                     <th class="px-4 py-3 text-right font-semibold text-muted-foreground">Total Stok</th>
                     <th class="px-4 py-3 text-left font-semibold text-muted-foreground">Multi-Satuan</th>
+                    <th class="px-4 py-3 text-left font-semibold text-muted-foreground">Halal</th>
                     <th class="px-4 py-3 text-left font-semibold text-muted-foreground">Aksi</th>
                 </tr>
             </thead>
@@ -36,9 +37,23 @@
                             @else<span class="text-muted-foreground">-</span>@endif
                         </td>
                         <td class="px-4 py-3">
+                            @if($product->halal_cert_number)
+                                @php $halalExp = $product->halal_cert_expired_date; @endphp
+                                @if($halalExp && $halalExp->isPast())
+                                    <x-badge variant="danger">Expired</x-badge>
+                                @elseif($halalExp && $halalExp <= now()->addDays(30))
+                                    <x-badge variant="warning">Akan Expired</x-badge>
+                                @else
+                                    <x-badge variant="success">Bersertifikat</x-badge>
+                                @endif
+                            @else
+                                <span class="text-muted-foreground">-</span>
+                            @endif
+                        </td>
+                        <td class="px-4 py-3">
                             <div class="flex gap-2">
                                 <a href="{{ route('app.products.show', $product) }}"><x-button variant="secondary" size="sm">Detail</x-button></a>
-                                <a href="{{ route('app.products.recipes.index', $product) }}"><x-button variant="info" size="sm">Resep</x-button></a>
+                                <a href="{{ route('app.products.recipes.index', $product) }}"><x-button variant="secondary" size="sm">Resep</x-button></a>
                                 <a href="{{ route('app.products.edit', $product) }}"><x-button variant="secondary" size="sm">Edit</x-button></a>
                                 <form action="{{ route('app.products.destroy', $product) }}" method="POST" onsubmit="return confirm('Hapus produk ini?')">@csrf @method('DELETE')<x-button variant="danger" size="sm" type="submit">Hapus</x-button></form>
                             </div>

@@ -57,7 +57,7 @@ class ProductController extends Controller
             ->orderByDesc('created_at')
             ->paginate(20);
 
-        $product->load('units', 'recipes.rawMaterial');
+        $product->load('units', 'recipes.items.rawMaterial');
         $units = $product->units;
 
         return view('app.owner.products.show', compact('product', 'branchData', 'movements', 'units'));
@@ -75,6 +75,10 @@ class ProductController extends Controller
             'sku' => 'nullable|string|max:100',
             'base_unit' => 'required|string|max:50',
             'selling_price' => 'required|numeric|min:0',
+            'minimum_stock' => 'nullable|numeric|min:0',
+            'halal_cert_number' => 'nullable|string|max:255',
+            'halal_cert_issuer' => 'nullable|string|max:255',
+            'halal_cert_expired_date' => 'nullable|date',
             'units' => 'nullable|array',
             'units.*.unit_name' => 'required_with:units|string|max:50',
             'units.*.conversion_to_base' => 'required_with:units|numeric|min:0.01',
@@ -87,8 +91,10 @@ class ProductController extends Controller
                 'sku' => $validated['sku'] ?? null,
                 'base_unit' => $validated['base_unit'],
                 'selling_price' => $validated['selling_price'],
-                'recipe_yield_quantity' => $validated['recipe_yield_quantity'] ?? 1,
                 'minimum_stock' => $validated['minimum_stock'] ?? 0,
+                'halal_cert_number' => $validated['halal_cert_number'] ?? null,
+                'halal_cert_issuer' => $validated['halal_cert_issuer'] ?? null,
+                'halal_cert_expired_date' => $validated['halal_cert_expired_date'] ?? null,
             ]);
 
             if (!empty($validated['units'])) {
@@ -124,8 +130,10 @@ class ProductController extends Controller
             'sku' => 'nullable|string|max:100',
             'base_unit' => 'required|string|max:50',
             'selling_price' => 'required|numeric|min:0',
-            'recipe_yield_quantity' => 'nullable|numeric|min:0.01',
             'minimum_stock' => 'nullable|numeric|min:0',
+            'halal_cert_number' => 'nullable|string|max:255',
+            'halal_cert_issuer' => 'nullable|string|max:255',
+            'halal_cert_expired_date' => 'nullable|date',
             'units' => 'nullable|array',
             'units.*.id' => 'nullable|exists:product_units,id',
             'units.*.unit_name' => 'required_with:units|string|max:50',
@@ -139,8 +147,10 @@ class ProductController extends Controller
                 'sku' => $validated['sku'] ?? null,
                 'base_unit' => $validated['base_unit'],
                 'selling_price' => $validated['selling_price'],
-                'recipe_yield_quantity' => $validated['recipe_yield_quantity'] ?? 1,
                 'minimum_stock' => $validated['minimum_stock'] ?? 0,
+                'halal_cert_number' => $validated['halal_cert_number'] ?? null,
+                'halal_cert_issuer' => $validated['halal_cert_issuer'] ?? null,
+                'halal_cert_expired_date' => $validated['halal_cert_expired_date'] ?? null,
             ]);
 
             if (isset($validated['units'])) {

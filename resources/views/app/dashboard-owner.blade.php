@@ -81,5 +81,33 @@
             </div>
         </x-card>
     @endif
+
+    @if(isset($halalExpiringSoon) && $halalExpiringSoon->count())
+        <x-card class="mt-6 border-warning/30">
+            <h2 class="text-lg font-semibold text-warning mb-3">⚠️ Sertifikasi Halal Akan Expired</h2>
+            <div class="space-y-2">
+                @foreach($halalExpiringSoon as $p)
+                    <div class="flex justify-between items-center text-sm p-2 bg-warning/5 rounded-[var(--radius)]">
+                        <span class="font-medium text-foreground">{{ $p->name }}</span>
+                        <span class="text-warning font-semibold">Exp: {{ $p->halal_cert_expired_date->format('d M Y') }}</span>
+                    </div>
+                @endforeach
+            </div>
+        </x-card>
+    @endif
+
+    @if(isset($halalExpired) && $halalExpired->count())
+        <x-card class="mt-6 border-destructive/30">
+            <h2 class="text-lg font-semibold text-destructive mb-3">Sertifikasi Halal Sudah Expired</h2>
+            <div class="space-y-2">
+                @foreach($halalExpired as $p)
+                    <div class="flex justify-between items-center text-sm p-2 bg-destructive/5 rounded-[var(--radius)]">
+                        <span class="font-medium text-foreground">{{ $p->name }}</span>
+                        <span class="text-destructive font-semibold">Expired: {{ $p->halal_cert_expired_date->format('d M Y') }}</span>
+                    </div>
+                @endforeach
+            </div>
+        </x-card>
+    @endif
 </div>
 @endsection

@@ -11,7 +11,15 @@
                 <x-input label="SKU (opsional)" name="sku" value="{{ old('sku', $product->sku) }}" />
                 <x-input label="Satuan (pcs, kg, dll)" name="base_unit" value="{{ old('base_unit', $product->base_unit) }}" required />
                 <x-input label="Harga Jual (Rp)" name="selling_price" type="number" step="0.01" value="{{ old('selling_price', $product->selling_price) }}" required />
-                <x-input label="Hasil per Resep" name="recipe_yield_quantity" type="number" step="0.01" min="0.01" value="{{ old('recipe_yield_quantity', $product->recipe_yield_quantity ?? 1) }}" helperText="Berapa unit produk jadi dari 1 kali proses resep?" />
+
+                <div class="border-t border-border pt-4">
+                    <h3 class="text-sm font-semibold text-foreground mb-3">Sertifikasi Halal (opsional)</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <x-input label="Nomor Sertifikat" name="halal_cert_number" value="{{ old('halal_cert_number', $product->halal_cert_number) }}" />
+                        <x-input label="Lembaga Penerbit" name="halal_cert_issuer" value="{{ old('halal_cert_issuer', $product->halal_cert_issuer) }}" />
+                        <x-input label="Tanggal Kedaluwarsa" name="halal_cert_expired_date" type="date" value="{{ old('halal_cert_expired_date', $product->halal_cert_expired_date?->format('Y-m-d')) }}" />
+                    </div>
+                </div>
 
                 <div x-data="{
                     units: {{ json_encode(old('units', $product->units->map(function($u) { return ['id' => $u->id, 'unit_name' => $u->unit_name, 'conversion_to_base' => (string)$u->conversion_to_base, 'price_override' => $u->price_override ? (string)$u->price_override : '']; })->toArray())) }}
