@@ -6,9 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Product;
 use App\Models\ProductionOrder;
+use App\Models\Recipe;
 use App\Services\StockService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class ProductionController extends Controller
@@ -20,7 +22,7 @@ class ProductionController extends Controller
     public function index(): View
     {
         $orders = ProductionOrder::where('business_id', auth()->user()->business_id)
-            ->with(['product', 'branch', 'user'])
+            ->with(['product', 'branch', 'user', 'recipe'])
             ->latest()
             ->paginate(15);
 
@@ -32,7 +34,7 @@ class ProductionController extends Controller
         $branches = Branch::where('business_id', auth()->user()->business_id)
             ->where('is_active', true)->get();
         $products = Product::where('business_id', auth()->user()->business_id)
-            ->whereHas('recipes')
+            ->whereHas('recipes', fn ($q) => $q->where('is_active', true))
             ->get();
 
         return view('app.owner.production.create', compact('branches', 'products'));
@@ -42,8 +44,9 @@ class ProductionController extends Controller
     {
         $validated = $request->validate([
             'product_id' => 'required|exists:products,id',
+            'recipe_id' => 'required|exists:recipes,id',
             'branch_id' => 'required|exists:branches,id',
-            'quantity_target' => 'required|numeric|min:0.01',
+            'batch_multiplier' => 'required|numeric|min:0.01',
             'expired_date' => 'nullable|date|after:today',
         ]);
 
@@ -56,9 +59,14 @@ class ProductionController extends Controller
         Branch::where('id', $validated['branch_id'])
             ->where('business_id', $businessId)->firstOrFail();
 
-        // Pre-check stock availability
+        $recipe = Recipe::where('id', $validated['recipe_id'])
+            ->where('product_id', $product->id)->firstOrFail();
+
+        $quantityTarget = $recipe->yield_quantity * $validated['batch_multiplier'];
+
+        // Pre-check stock
         $shortages = $this->stockService->checkProductionStockAvailability(
-            $product->id, $validated['branch_id'], $validated['quantity_target']
+            $recipe->id, $validated['branch_id'], $validated['batch_multiplier']
         );
 
         if (!empty($shortages)) {
@@ -66,9 +74,7 @@ class ProductionController extends Controller
                 "{$s->name}: butuh {$s->needed} {$s->unit}, tersedia {$s->available} {$s->unit} (kurang {$s->shortage})"
             )->implode('<br>');
 
-            return back()
-                ->withInput()
-                ->with('error', "Stok bahan baku tidak mencukupi:<br>{$msg}");
+            return back()->withInput()->with('error', "Stok bahan baku tidak mencukupi:<br>{$msg}");
         }
 
         $productionCode = $this->stockService->generateProductionCode();
@@ -78,18 +84,20 @@ class ProductionController extends Controller
             'business_id' => $businessId,
             'branch_id' => $validated['branch_id'],
             'product_id' => $product->id,
+            'recipe_id' => $recipe->id,
             'user_id' => $userId,
-            'quantity_target' => $validated['quantity_target'],
+            'quantity_target' => $quantityTarget,
+            'batch_multiplier' => $validated['batch_multiplier'],
             'expired_date' => $validated['expired_date'] ?? null,
             'status' => 'draft',
         ]);
 
         try {
             $this->stockService->consumeRawMaterialsForProduction(
-                productId: $product->id,
+                recipeId: $recipe->id,
                 branchId: $validated['branch_id'],
                 businessId: $businessId,
-                quantityTarget: $validated['quantity_target'],
+                batchMultiplier: $validated['batch_multiplier'],
                 productionOrderId: $order->id,
                 userId: $userId,
             );
@@ -98,37 +106,33 @@ class ProductionController extends Controller
                 productId: $product->id,
                 branchId: $validated['branch_id'],
                 businessId: $businessId,
-                quantity: $validated['quantity_target'],
+                quantity: $quantityTarget,
                 productionOrderId: $order->id,
                 userId: $userId,
                 expiredDate: $validated['expired_date'] ?? null,
             );
 
-            $order->update([
-                'status' => 'confirmed',
-                'produced_at' => now(),
-            ]);
+            $order->update(['status' => 'confirmed', 'produced_at' => now()]);
 
             activity()
                 ->performedOn($order)
                 ->causedBy(auth()->user())
                 ->withProperties([
                     'product' => $product->name,
-                    'quantity' => $validated['quantity_target'],
-                    'branch_id' => $validated['branch_id'],
+                    'recipe' => $recipe->name,
+                    'quantity' => $quantityTarget,
+                    'batch_multiplier' => $validated['batch_multiplier'],
                 ])
                 ->log('Production order confirmed');
 
         } catch (\Throwable $e) {
             $order->update(['status' => 'cancelled']);
-            return back()
-                ->withInput()
-                ->with('error', 'Produksi gagal: ' . $e->getMessage());
+            return back()->withInput()->with('error', 'Produksi gagal: ' . $e->getMessage());
         }
 
         return redirect()
             ->route('app.production.index')
-            ->with('success', "Produksi {$product->name} ({$validated['quantity_target']} unit) berhasil.");
+            ->with('success', "Produksi {$product->name} ({$quantityTarget} unit) berhasil.");
     }
 
     public function show(ProductionOrder $production): View
@@ -136,10 +140,32 @@ class ProductionController extends Controller
         if ($production->business_id !== auth()->user()->business_id) abort(403);
 
         $production->load([
-            'product', 'branch', 'user',
+            'product', 'branch', 'user', 'recipe',
             'consumptions.rawMaterialBatch.rawMaterial',
         ]);
 
         return view('app.owner.production.show', compact('production'));
+    }
+
+    public function getRecipes(Product $product)
+    {
+        if ($product->business_id !== auth()->user()->business_id) abort(403);
+
+        $recipes = $product->recipes()
+            ->where('is_active', true)
+            ->with('items.rawMaterial')
+            ->get()
+            ->map(fn ($r) => [
+                'id' => $r->id,
+                'name' => $r->name,
+                'yield_quantity' => (float) $r->yield_quantity,
+                'items' => $r->items->map(fn ($i) => [
+                    'raw_material_name' => $i->rawMaterial->name,
+                    'qty_per_batch' => (float) $i->qty_per_batch,
+                    'unit' => $i->unit,
+                ]),
+            ]);
+
+        return response()->json($recipes);
     }
 }

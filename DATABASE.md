@@ -91,7 +91,9 @@ Role (Superadmin/Owner/Kasir) dikelola via `spatie/laravel-permission` (tabel `r
 | base_unit | string | Satuan dasar (mis. `pcs`) |
 | selling_price | decimal | Harga jual satuan dasar |
 | image | string, nullable | via medialibrary |
-| recipe_yield_quantity | decimal, default 1 | Jumlah unit produk jadi yang dihasilkan dari SATU KALI proses resep (lihat `product_recipes` di bawah). Default 1 berarti resep diinput per-unit langsung (setara skema lama); isi > 1 kalau Owner berpikir dalam skala batch/adonan (mis. "1 adonan = 20 pcs"). |
+| halal_cert_number | string, nullable | Nomor sertifikat halal produk ini |
+| halal_cert_issuer | string, nullable | Nama lembaga penerbit sertifikasi halal |
+| halal_cert_expired_date | date, nullable | Tanggal kedaluwarsa sertifikat halal. Dasar notifikasi "akan expired dalam 30 hari" di dashboard Owner (lihat `PRD.md` bagian 6.11 dan `BUSINESS-RULES.md` bagian 12) |
 
 ### `product_units` (Multi-Satuan / Eceran-Borongan)
 | Kolom | Tipe | Keterangan |
@@ -118,18 +120,29 @@ Role (Superadmin/Owner/Kasir) dikelola via `spatie/laravel-permission` (tabel `r
 
 > **Total stok produk** (untuk list/dashboard) dihitung sebagai `SUM(quantity_remaining)` per `product_id` + `branch_id`, sama persis pola `raw_material_batches` — TIDAK ADA lagi tabel agregat stok produk terpisah, konsisten dengan cara bahan baku dihitung.
 
-## 3. Produksi (BOM)
+## 3. Produksi (BOM Multi-Resep)
 
-### `product_recipes`
+> **Perubahan skema**: satu produk sekarang bisa punya BANYAK resep berbeda skala (mis. "Resep 100 pcs" dan "Resep 500 pcs" untuk produk yang sama), bukan satu resep tunggal per produk. Saat produksi, Owner memilih SALAH SATU resep — sistem otomatis tahu bahan yang dibutuhkan dan produk yang dihasilkan berdasarkan resep itu, tanpa perlu hitung ulang per-unit.
+
+### `recipes`
 | Kolom | Tipe | Keterangan |
 |---|---|---|
 | id | bigint PK | |
 | product_id | FK products | |
+| name | string | Nama resep untuk membedakan skala, mis. "Resep 100 pcs", "Resep 500 pcs" |
+| yield_quantity | decimal | Jumlah unit produk jadi yang dihasilkan dari SATU KALI proses resep ini |
+| is_active | boolean, default true | Resep nonaktif tidak muncul di pilihan saat buat production order baru (histori production order lama tetap utuh) |
+
+### `recipe_items` (menggantikan `product_recipes` versi lama)
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| id | bigint PK | |
+| recipe_id | FK recipes | |
 | raw_material_id | FK raw_materials | |
-| qty_per_batch | decimal | Kebutuhan bahan baku untuk SATU KALI proses resep (menghasilkan `products.recipe_yield_quantity` unit produk jadi) — BUKAN per 1 unit. Kalau `recipe_yield_quantity = 1`, nilainya otomatis sama dengan kebutuhan per unit. |
+| qty_per_batch | decimal | Kebutuhan bahan baku untuk SATU KALI proses resep ini (sesuai `recipes.yield_quantity` resep tersebut) |
 | unit | string | Satuan pada resep (bisa beda dari base_unit bahan baku, perlu konversi) |
 
-> Kalkulasi kebutuhan efektif per unit produk: `qty_per_batch / recipe_yield_quantity`. Lihat `BUSINESS-RULES.md` bagian 1.1 untuk formula lengkap saat production order dijalankan.
+> Satu produk boleh punya 0, 1, atau banyak `recipes`. Tidak ada lagi konsep "yield" di level `products` — yield sekarang melekat ke tiap resep, bukan ke produk.
 
 ### `production_orders`
 | Kolom | Tipe | Keterangan |
@@ -137,10 +150,12 @@ Role (Superadmin/Owner/Kasir) dikelola via `spatie/laravel-permission` (tabel `r
 | id | bigint PK | |
 | business_id | FK businesses | |
 | branch_id | FK branches | |
-| product_id | FK products | |
+| product_id | FK products | Denormalisasi dari `recipe.product_id` untuk kemudahan query/laporan |
+| recipe_id | FK recipes | Resep yang dipilih Owner untuk production order ini |
 | user_id | FK users | Owner yang menjalankan produksi |
 | production_code | string, unique | Kode produksi otomatis, human-readable, mis. `PRD-20260708-0001` (format: `PRD-{YYYYMMDD}-{urutan 4 digit per hari}`). Immutable setelah dibuat, dipakai sebagai label tampilan di `stock_movements` ("Produksi (PRD-20260708-0001)") |
-| quantity_target | decimal | Jumlah produk yang ingin diproduksi |
+| batch_multiplier | decimal, default 1 | Berapa kali resep ini dijalankan sekaligus (mis. resep 100 pcs dijalankan 3x = 300 pcs). Default 1 = resep dijalankan apa adanya sesuai `recipe.yield_quantity` |
+| quantity_target | decimal | **Otomatis dihitung**: `recipe.yield_quantity × batch_multiplier` — bukan input manual bebas, tapi hasil dari pilihan resep + pengali |
 | expired_date | date, nullable | Tanggal kedaluwarsa produk hasil produksi ini (opsional — tidak semua produk expired). Diisi Owner saat membuat production order, diturunkan ke `product_batches.expired_date` |
 | status | enum(`draft`,`confirmed`,`cancelled`) | |
 | produced_at | timestamp | |
@@ -364,7 +379,8 @@ Ditangani otomatis oleh `spatie/laravel-activitylog` (tabel `activity_log` bawaa
 ```
 businesses 1---n branches
 branches   1---n users (kasir), raw_material_batches, product_batches, sales, purchases, shipments
-products   1---n product_recipes---1 raw_materials
+products   1---n recipes---1 recipe_items---1 raw_materials
+production_orders 1---n recipe_id (resep yang dipilih)
 products   1---n product_units
 products   1---n product_batches
 production_orders 1---n production_consumptions---1 raw_material_batches

@@ -8,6 +8,8 @@ Aplikasi ini dibangun untuk membantu pelaku UMKM mengelola data penjualan, stok,
 
 Aplikasi berjalan sebagai **platform SaaS multi-tenant**: satu instalasi aplikasi (single database) melayani banyak UMKM (tenant) sekaligus, di mana setiap UMKM memiliki data yang terisolasi satu sama lain.
 
+Aplikasi ini juga mendukung kebutuhan **kepatuhan sertifikasi halal**: setiap produk mencatat status sertifikasi halalnya (nomor sertifikat, lembaga penerbit, tanggal kedaluwarsa), dengan notifikasi otomatis ke Owner saat sertifikasi mendekati masa berakhir — membantu UMKM menjaga kepatuhan tanpa perlu memantau manual satu per satu.
+
 ## 2. Tech Stack
 
 | Komponen | Pilihan |
@@ -86,17 +88,18 @@ Detail matrix permission akan dijabarkan lengkap di `PERMISSIONS.md`.
 - Setiap pembelian menambah stok bahan baku sesuai batch (untuk keperluan FEFO).
 
 ### 6.5 Produksi
-- Produk jadi memiliki **resep (BOM - Bill of Materials)**: daftar bahan baku beserta jumlah kebutuhan per satuan produk.
-- Saat produksi dijalankan (production order), sistem otomatis mengurangi stok bahan baku berdasarkan formula:
-  `qty_dikurangi = qty_per_unit_pada_resep × jumlah_diproduksi`
+- Satu produk dapat memiliki **banyak resep (BOM)** dengan skala berbeda (mis. "Resep 100 pcs" dan "Resep 500 pcs" untuk produk yang sama), masing-masing dengan daftar bahan baku & takarannya sendiri.
+- Saat membuat production order, Owner **memilih salah satu resep** milik produk tersebut (bukan input jumlah target manual) — sistem otomatis tahu jumlah produk yang dihasilkan dan bahan baku yang dibutuhkan berdasarkan resep tersebut. Owner juga bisa set "jumlah pengulangan resep" (default 1) kalau ingin menjalankan resep yang sama beberapa kali sekaligus dalam satu production order.
+- Setiap production order menghasilkan **kode produksi otomatis** (production code) dan mencatat **tanggal kedaluwarsa produk** hasil produksi tersebut (opsional, tergantung jenis produk).
 - Pengurangan bahan baku mengikuti urutan FEFO antar batch.
 - Mendukung konversi satuan (mis. resep dalam gram, stok dalam kg).
 - Opsional (fase lanjutan): persentase susut/waste produksi, versioning resep.
-- Hasil produksi menambah stok produk jadi di cabang terkait.
+- Hasil produksi menambah stok produk jadi (dalam bentuk batch baru, dengan kode produksi & tanggal kedaluwarsa) di cabang terkait.
 
 ### 6.6 Produk & Stok Produk Jadi
 - Produk jadi memiliki multi-satuan (eceran/pcs, borongan/dus atau karton) dengan konversi otomatis.
 - Foto produk (melalui medialibrary).
+- **Sertifikasi Halal**: setiap produk mencatat nomor sertifikat halal, lembaga penerbit, dan tanggal kedaluwarsa sertifikat. Dashboard Owner menampilkan notifikasi untuk produk yang sertifikatnya akan expired dalam 30 hari ke depan (lihat bagian 6.11).
 
 ### 6.7 Pengiriman ke Pembeli
 - Mendukung dua skema:
@@ -131,7 +134,7 @@ Detail matrix permission akan dijabarkan lengkap di `PERMISSIONS.md`.
 - Export ke Excel & PDF.
 
 ### 6.11 Dashboard
-- Dashboard Owner: ringkasan seluruh cabang (penjualan, stok kritis, utang-piutang jatuh tempo).
+- Dashboard Owner: ringkasan seluruh cabang (penjualan, stok kritis, utang-piutang jatuh tempo, **sertifikasi halal yang akan expired dalam 30 hari**).
 - Dashboard Kasir: ringkasan transaksi harian miliknya.
 - Dashboard Superadmin: daftar tenant, status aktif/nonaktif.
 

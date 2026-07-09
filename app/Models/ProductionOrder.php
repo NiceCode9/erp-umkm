@@ -12,17 +12,23 @@ class ProductionOrder extends Model
     use BelongsToBusiness;
 
     protected $fillable = [
+        'production_code',
         'business_id',
         'branch_id',
         'product_id',
+        'recipe_id',
         'user_id',
         'quantity_target',
+        'batch_multiplier',
+        'expired_date',
         'status',
         'produced_at',
     ];
 
     protected $casts = [
         'quantity_target' => 'decimal:2',
+        'batch_multiplier' => 'decimal:2',
+        'expired_date' => 'date',
         'produced_at' => 'datetime',
     ];
 
@@ -34,6 +40,11 @@ class ProductionOrder extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function recipe(): BelongsTo
+    {
+        return $this->belongsTo(Recipe::class);
     }
 
     public function user(): BelongsTo

@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\ProductBatch;
-use App\Models\ProductRecipe;
 use App\Models\ProductionConsumption;
 use App\Models\RawMaterial;
 use App\Models\RawMaterialBatch;
@@ -63,52 +62,48 @@ class StockService
     }
 
     /**
-     * Consume raw materials for production using yield-based formula & FEFO.
-     * qty_per_unit_efektif = qty_per_batch / recipe_yield_quantity
-     * total_kebutuhan = qty_per_unit_efektif × quantity_target
+     * Consume raw materials for production using multi-recipe FEFO.
+     * total_kebutuhan = qty_per_batch × batch_multiplier
      *
      * @throws \InvalidArgumentException when stock is insufficient
      */
     public function consumeRawMaterialsForProduction(
-        int $productId, int $branchId, int $businessId,
-        float $quantityTarget, int $productionOrderId, int $userId,
+        int $recipeId, int $branchId, int $businessId,
+        float $batchMultiplier, int $productionOrderId, int $userId,
     ): Collection {
-        $product = \App\Models\Product::findOrFail($productId);
-        $yieldQty = (float) ($product->recipe_yield_quantity ?: 1);
+        $recipe = \App\Models\Recipe::with('items.rawMaterial')->findOrFail($recipeId);
+        $items = $recipe->items;
 
-        $recipes = ProductRecipe::where('product_id', $productId)->with('rawMaterial')->get();
-
-        if ($recipes->isEmpty()) {
-            throw new \InvalidArgumentException('Produk ini belum memiliki resep (BOM).');
+        if ($items->isEmpty()) {
+            throw new \InvalidArgumentException('Resep ini belum memiliki bahan baku.');
         }
 
         $shortages = [];
 
         return DB::transaction(function () use (
-            $recipes, $branchId, $businessId, $quantityTarget,
-            $productionOrderId, $userId, &$shortages, $yieldQty
+            $items, $branchId, $businessId, $batchMultiplier,
+            $productionOrderId, $userId, &$shortages
         ) {
             $consumptions = collect();
 
-            foreach ($recipes as $recipe) {
-                // yield-based formula
-                $qtyPerUnitEfektif = $recipe->qty_per_batch / $yieldQty;
-                $totalNeeded = $qtyPerUnitEfektif * $quantityTarget;
+            foreach ($items as $item) {
+                // formula: total_kebutuhan = qty_per_batch × batch_multiplier
+                $totalNeeded = $item->qty_per_batch * $batchMultiplier;
 
                 $convertedNeeded = $this->convertUnit(
-                    $totalNeeded, $recipe->unit, $recipe->rawMaterial->base_unit
+                    $totalNeeded, $item->unit, $item->rawMaterial->base_unit
                 );
 
                 // Check total available stock first
-                $totalAvailable = (float) RawMaterialBatch::where('raw_material_id', $recipe->raw_material_id)
+                $totalAvailable = (float) RawMaterialBatch::where('raw_material_id', $item->raw_material_id)
                     ->where('branch_id', $branchId)
                     ->where('quantity_remaining', '>', 0)
                     ->sum('quantity_remaining');
 
                 if ($totalAvailable < $convertedNeeded) {
                     $shortages[] = (object) [
-                        'raw_material' => $recipe->rawMaterial->name,
-                        'unit' => $recipe->rawMaterial->base_unit,
+                        'raw_material' => $item->rawMaterial->name,
+                        'unit' => $item->rawMaterial->base_unit,
                         'needed' => $convertedNeeded,
                         'available' => $totalAvailable,
                         'shortage' => $convertedNeeded - $totalAvailable,
@@ -117,7 +112,7 @@ class StockService
                 }
 
                 // FEFO: get batches ordered by expired_date ASC (NULLS LAST)
-                $batches = RawMaterialBatch::where('raw_material_id', $recipe->raw_material_id)
+                $batches = RawMaterialBatch::where('raw_material_id', $item->raw_material_id)
                     ->where('branch_id', $branchId)
                     ->where('quantity_remaining', '>', 0)
                     ->orderByRaw('COALESCE(expired_date, \'9999-12-31\') ASC')
@@ -139,17 +134,16 @@ class StockService
                     $consumptions->push($consumption);
 
                     $this->recordMovement($businessId, $branchId, 'raw_material',
-                        $recipe->raw_material_id, $batch->id,
+                        $item->raw_material_id, $batch->id,
                         'out', $deductQty, 'production', $productionOrderId, $userId);
 
                     $remaining -= $deductQty;
                 }
 
-                // Safety check (shouldn't happen if we did the total check above)
                 if ($remaining > 0) {
                     $shortages[] = (object) [
-                        'raw_material' => $recipe->rawMaterial->name,
-                        'unit' => $recipe->rawMaterial->base_unit,
+                        'raw_material' => $item->rawMaterial->name,
+                        'unit' => $item->rawMaterial->base_unit,
                         'needed' => $convertedNeeded,
                         'available' => $convertedNeeded - $remaining,
                         'shortage' => $remaining,
@@ -200,21 +194,16 @@ class StockService
 
     /**
      * Check stock availability for a production order (without consuming).
-     * Uses yield-based formula: qty_per_unit_efektif = qty_per_batch / recipe_yield_quantity
-     * Returns array of shortage objects, empty if sufficient.
+     * total_kebutuhan = qty_per_batch × batch_multiplier
      */
     public function checkProductionStockAvailability(
-        int $productId, int $branchId, float $quantityTarget
+        int $recipeId, int $branchId, float $batchMultiplier
     ): array {
-        $product = \App\Models\Product::findOrFail($productId);
-        $yieldQty = (float) ($product->recipe_yield_quantity ?: 1);
-
-        $recipes = ProductRecipe::where('product_id', $productId)->with('rawMaterial')->get();
+        $recipe = \App\Models\Recipe::with('items.rawMaterial')->findOrFail($recipeId);
         $shortages = [];
 
-        foreach ($recipes as $recipe) {
-            $qtyPerUnitEfektif = $recipe->qty_per_batch / $yieldQty;
-            $totalNeeded = $qtyPerUnitEfektif * $quantityTarget;
+        foreach ($recipe->items as $item) {
+            $totalNeeded = $item->qty_per_batch * $batchMultiplier;
             $convertedNeeded = $this->convertUnit(
                 $totalNeeded, $recipe->unit, $recipe->rawMaterial->base_unit
             );

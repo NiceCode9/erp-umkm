@@ -38,7 +38,7 @@ Urutan ini dirancang agar setiap fase menghasilkan sistem yang bisa langsung dit
 
 ## Fase 4 - Produksi (BOM + FEFO)
 
-- Kelola resep produk (`product_recipes`).
+- Kelola resep produk — mendukung banyak resep per produk (`recipes` + `recipe_items`), Owner pilih resep saat produksi.
 - Production order: validasi stok cukup, pengurangan otomatis bahan baku mengikuti FEFO, penambahan stok produk jadi.
 - Riwayat produksi & pencatatan konsumsi per batch (`production_consumptions`).
 

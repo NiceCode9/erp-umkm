@@ -65,22 +65,24 @@
         <form action="{{ route('app.products.recipes.store', $product) }}" method="POST">
             @csrf
             <x-form-repeater name="recipes" label="Bahan Baku" addLabel="+ Tambah Bahan" :minItems="1" emptyMessage="Belum ada bahan.">
-                <div>
-                    <label class="text-xs text-muted-foreground">Bahan Baku</label>
-                    <select :name="`recipes[${index}][raw_material_id]`" class="block w-full border border-input rounded-[var(--radius)] px-3 py-2 text-sm bg-background" required>
-                        <option value="">-- Pilih --</option>
-                        @foreach($rawMaterials as $rm)
-                            <option value="{{ $rm->id }}">{{ $rm->name }} ({{ $rm->base_unit }})</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div>
-                    <label class="text-xs text-muted-foreground">Qty per Batch</label>
-                    <input type="number" step="0.01" min="0.01" :name="`recipes[${index}][qty_per_batch]`" class="block w-full border border-input rounded-[var(--radius)] px-3 py-2 text-sm bg-background" required>
-                </div>
-                <div>
-                    <label class="text-xs text-muted-foreground">Satuan</label>
-                    <input type="text" :name="`recipes[${index}][unit]`" class="block w-full border border-input rounded-[var(--radius)] px-3 py-2 text-sm bg-background" placeholder="g, kg, ml" required>
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="text-xs text-muted-foreground">Bahan Baku</label>
+                        <select :name="`recipes[${index}][raw_material_id]`" class="block w-full border border-input rounded-[var(--radius)] px-3 py-2 text-sm bg-background" required>
+                            <option value="">-- Pilih --</option>
+                            @foreach($rawMaterials as $rm)
+                                <option value="{{ $rm->id }}">{{ $rm->name }} ({{ $rm->base_unit }})</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs text-muted-foreground">Qty per Batch</label>
+                        <input type="number" step="0.01" min="0.01" :name="`recipes[${index}][qty_per_batch]`" class="block w-full border border-input rounded-[var(--radius)] px-3 py-2 text-sm bg-background" required>
+                    </div>
+                    <div>
+                        <label class="text-xs text-muted-foreground">Satuan</label>
+                        <input type="text" :name="`recipes[${index}][unit]`" class="block w-full border border-input rounded-[var(--radius)] px-3 py-2 text-sm bg-background" placeholder="g, kg, ml" required>
+                    </div>
                 </div>
             </x-form-repeater>
             <div class="mt-4"><x-button type="submit">Simpan Semua Bahan</x-button></div>

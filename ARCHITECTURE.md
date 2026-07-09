@@ -108,7 +108,7 @@ Semua transaksi finansial (purchases, sales) ──► purchase_payments / sale_
 
 - Web server: Apache/Nginx + PHP-FPM (sesuaikan dengan hosting yang tersedia).
 - Queue: disarankan menggunakan queue worker (database driver cukup untuk awal) untuk proses berat seperti export laporan besar atau notifikasi, agar tidak memblokir request utama.
-- Scheduler Laravel aktif untuk: backup database, notifikasi stok minimum, notifikasi jatuh tempo utang-piutang.
+- Scheduler Laravel aktif untuk: backup database, notifikasi stok minimum, notifikasi jatuh tempo utang-piutang, notifikasi sertifikasi halal akan/sudah expired (lihat `BUSINESS-RULES.md` bagian 10).
 
 ## 9. Dokumen Terkait
 

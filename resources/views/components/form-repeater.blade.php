@@ -4,6 +4,7 @@
     'addLabel' => '+ Tambah Baris',
     'emptyMessage' => 'Belum ada data.',
     'minItems' => 1,
+    'cols' => 4,
 ])
 
 <div x-data="{
@@ -27,7 +28,7 @@
     <template x-for="(item, index) in items" :key="index">
         <div class="p-4 bg-muted rounded-[var(--radius)] border border-border mb-2 relative">
             <button type="button" @click="removeItem(index)" x-show="items.length > {{ $minItems }}" class="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center hover:bg-destructive/90" title="Hapus">&times;</button>
-            <div class="grid grid-cols-1 md:grid-cols-{{ $slot ? '4' : '1' }} gap-3">
+            <div class="grid grid-cols-{{ $cols }} gap-3">
                 {{ $slot }}
             </div>
         </div>

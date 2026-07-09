@@ -5,16 +5,15 @@ Dokumen ini merinci logika yang WAJIB diimplementasikan secara konsisten via Ser
 ## 1. Produksi (BOM) & Pengurangan Stok Bahan Baku
 
 ### 1.1 Alur Umum
-1. Owner membuat `production_order` dengan `product_id` dan `quantity_target`.
-2. Sistem ambil semua baris `product_recipes` untuk `product_id` tersebut, beserta `products.recipe_yield_quantity` produk tersebut.
-3. Untuk setiap baris resep, hitung total kebutuhan bahan baku:
+1. Owner membuat `production_order` dengan memilih `recipe_id` (salah satu resep milik produk tersebut) dan `branch_id`, plus opsional `batch_multiplier` (default 1 — berapa kali resep ini dijalankan sekaligus).
+2. Sistem hitung `quantity_target = recipe.yield_quantity × batch_multiplier` secara otomatis (bukan input manual bebas) — ini yang akan jadi jumlah produk jadi hasil produksi ini.
+3. Sistem ambil semua baris `recipe_items` untuk `recipe_id` yang dipilih. Untuk setiap baris, hitung total kebutuhan bahan baku:
 
    ```
-   qty_per_unit_efektif = qty_per_batch / recipe_yield_quantity
-   total_kebutuhan = qty_per_unit_efektif × quantity_target
+   total_kebutuhan = qty_per_batch × batch_multiplier
    ```
 
-   Contoh: resep menghasilkan 20 pcs (`recipe_yield_quantity = 20`) dengan kebutuhan tepung `qty_per_batch = 2000` gram. Maka `qty_per_unit_efektif = 100` gram/pcs. Jika `quantity_target = 50` pcs, `total_kebutuhan = 5000` gram tepung.
+   Contoh: resep "100 pcs" (`recipe.yield_quantity = 100`) butuh tepung `qty_per_batch = 4000` gram. Jika Owner pilih `batch_multiplier = 3` (jalankan 3x), maka `quantity_target = 300` pcs dan `total_kebutuhan` tepung `= 12000` gram. **Tidak ada lagi pembagian per-unit** seperti skema lama — karena tiap resep sudah mendefinisikan skala tetapnya sendiri, `batch_multiplier` cukup mengalikan proporsional seluruh resep sekaligus.
 
 4. Konversi `total_kebutuhan` ke `base_unit` bahan baku jika satuan resep berbeda (lihat bagian 1.3).
 5. Ambil batch bahan baku terkait di cabang tersebut, urutkan berdasarkan `expired_date ASC` (FEFO — batch yang lebih cepat kedaluwarsa dipakai lebih dulu; batch tanpa `expired_date` diperlakukan sebagai prioritas terakhir).
@@ -29,14 +28,14 @@ Dokumen ini merinci logika yang WAJIB diimplementasikan secara konsisten via Ser
 - Tampilkan ke Owner: bahan baku mana yang kurang, dan berapa selisihnya.
 
 ### 1.3 Konversi Satuan
-- Jika satuan pada `product_recipes.unit` berbeda dari `raw_materials.base_unit` (mis. resep pakai gram, stok pakai kg), WAJIB dikonversi sebelum pengurangan stok.
+- Jika satuan pada `recipe_items.unit` berbeda dari `raw_materials.base_unit` (mis. resep pakai gram, stok pakai kg), WAJIB dikonversi sebelum pengurangan stok.
 - Fase awal: cukup dukung konversi sederhana antar satuan berat (g↔kg) dan volume (ml↔liter) via tabel konversi tetap di kode/config.
 - Fase lanjutan (opsional, dicatat di `ROADMAP.md`): tabel `unit_conversions` dinamis bila kombinasi satuan makin kompleks.
 
 ### 1.4 Di Luar Cakupan Versi Ini
 - Persentase susut/waste produksi otomatis.
 - Versioning resep (riwayat perubahan komposisi resep dari waktu ke waktu).
-- Kedua hal ini masuk fase lanjutan — production order tetap harus mencatat `product_recipes` yang dipakai saat itu sebagai referensi historis minimal (simpan snapshot ringkas bila memungkinkan).
+- Kedua hal ini masuk fase lanjutan — `production_orders.recipe_id` sudah otomatis jadi referensi historis resep mana yang dipakai saat itu (karena tiap production order mengunci satu `recipe_id` spesifik). Jika resep diedit setelahnya, histori production order lama tetap merujuk `recipe_id` yang sama — pertimbangkan versioning penuh (snapshot `recipe_items` per production order) di fase lanjutan jika Owner sering mengedit resep yang sama.
 
 ## 2. FEFO (First Expired First Out)
 
@@ -140,3 +139,10 @@ Dokumen ini merinci logika yang WAJIB diimplementasikan secara konsisten via Ser
 - `closing_cash_system` dihitung otomatis dari total pembayaran tunai pada `sales` yang terjadi dalam rentang `cashier_shift_id` tersebut.
 - `difference = closing_cash_actual - closing_cash_system`.
 - Selisih signifikan (threshold ditentukan kemudian) dapat memicu flag untuk ditinjau Owner.
+
+## 10. Notifikasi Sertifikasi Halal
+
+- Setiap `products` dengan `halal_cert_expired_date` terisi (tidak null) dicek setiap hari (via Laravel Scheduler, lihat `ARCHITECTURE.md` bagian 8).
+- Jika `halal_cert_expired_date - hari ini <= 30 hari` (dan belum lewat), produk tersebut masuk daftar "Sertifikasi Akan Expired" di dashboard Owner.
+- Produk yang sertifikatnya **sudah lewat tanggal expired** (bukan cuma akan expired) ditandai terpisah dengan indikator lebih tegas (mis. `--destructive` bukan `--warning`) — ini kondisi lebih kritis karena produk secara legal tidak lagi bersertifikat halal, Owner perlu tahu segera.
+- Notifikasi ini murni informatif di dashboard (badge/list) — TIDAK memblokir penjualan produk tersebut secara otomatis (keputusan bisnis soal stop jual produk yang sertifikatnya lewat tetap di tangan Owner, bukan dipaksa sistem, kecuali diputuskan lain di kemudian hari).

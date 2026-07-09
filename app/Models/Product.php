@@ -19,14 +19,16 @@ class Product extends Model implements HasMedia
         'sku',
         'base_unit',
         'selling_price',
-        'recipe_yield_quantity',
         'minimum_stock',
+        'halal_cert_number',
+        'halal_cert_issuer',
+        'halal_cert_expired_date',
     ];
 
     protected $casts = [
         'selling_price' => 'decimal:2',
-        'recipe_yield_quantity' => 'decimal:2',
         'minimum_stock' => 'decimal:2',
+        'halal_cert_expired_date' => 'date',
     ];
 
     public function business(): BelongsTo
@@ -41,7 +43,7 @@ class Product extends Model implements HasMedia
 
     public function recipes(): HasMany
     {
-        return $this->hasMany(ProductRecipe::class);
+        return $this->hasMany(Recipe::class);
     }
 
     public function registerMediaCollections(): void
