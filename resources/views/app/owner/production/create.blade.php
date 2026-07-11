@@ -8,7 +8,7 @@
             products: {{ json_encode($products->map(fn($p) => ['id' => $p->id, 'name' => $p->name, 'base_unit' => $p->base_unit])->values()) }},
             recipes: [],
             selectedRecipe: null,
-            multiplier: 1,
+            multiplier: {{ old('batch_multiplier', 1) }},
             previewTotal: 0,
             previewItems: [],
             async loadRecipes(productId) {
@@ -40,6 +40,7 @@
                             <option value="{{ $p->id }}" @selected(old('product_id')==$p->id)>{{ $p->name }} ({{ $p->base_unit }})</option>
                         @endforeach
                     </select>
+                    @error('product_id')<p class="mt-1 text-sm text-destructive">{{ $message }}</p>@enderror
                 </div>
 
                 <div x-show="recipes.length > 0">
@@ -50,15 +51,18 @@
                             <option :value="r.id" x-text="r.name + ' (hasil: ' + r.yield_quantity + ' pcs)'"></option>
                         </template>
                     </select>
+                    @error('recipe_id')<p class="mt-1 text-sm text-destructive">{{ $message }}</p>@enderror
                 </div>
 
                 <div>
-                    <x-input label="Cabang" name="branch_id" type="select" required>
+                    <label class="block text-sm font-medium text-foreground mb-1">Cabang <span class="text-destructive">*</span></label>
+                    <select name="branch_id" class="block w-full border border-input rounded-[var(--radius)] px-3 py-2 text-foreground bg-background focus:ring-2 focus:ring-ring focus:border-transparent" required>
                         <option value="">-- Pilih Cabang --</option>
                         @foreach($branches as $b)
                             <option value="{{ $b->id }}" @selected(old('branch_id')==$b->id)>{{ $b->name }}</option>
                         @endforeach
-                    </x-input>
+                    </select>
+                    @error('branch_id')<p class="mt-1 text-sm text-destructive">{{ $message }}</p>@enderror
                 </div>
 
                 <div>
@@ -75,7 +79,7 @@
                         <template x-for="item in previewItems" :key="item.name">
                             <div class="flex justify-between text-xs">
                                 <span x-text="item.name"></span>
-                                <span x-text="format_number(item.qty) + ' ' + item.unit"></span>
+                                <span x-text="item.qty.toLocaleString('id-ID') + ' ' + item.unit"></span>
                             </div>
                         </template>
                     </div>
