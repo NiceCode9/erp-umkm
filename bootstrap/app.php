@@ -22,6 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'business.active' => \App\Http\Middleware\EnsureBusinessIsActive::class,
             'branch.access' => \App\Http\Middleware\EnsureBranchAccess::class,
+            'shift.open' => \App\Http\Middleware\EnsureShiftIsOpen::class,
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
         ]);
     })

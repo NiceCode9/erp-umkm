@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\ProductBatch;
 use App\Models\ProductUnit;
 use App\Models\StockMovement;
+use Milon\Barcode\DNS1D;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -191,5 +192,28 @@ class ProductController extends Controller
         return redirect()
             ->route('app.products.index')
             ->with('success', 'Produk berhasil dihapus.');
+    }
+
+    public function printBarcodeForm(Product $product): View
+    {
+        if ($product->business_id !== auth()->user()->business_id) abort(403);
+
+        return view('app.owner.products.barcode-form', compact('product'));
+    }
+
+    public function printBarcode(Request $request, Product $product): View
+    {
+        if ($product->business_id !== auth()->user()->business_id) abort(403);
+
+        $validated = $request->validate([
+            'qty' => 'required|integer|min:1|max:100',
+        ]);
+
+        $barcode = new DNS1D();
+        $sku = $product->sku ?? 'SKU-' . $product->id;
+        $barcodeHtml = $barcode->getBarcodeHTML($sku, 'C128', 1.5, 50);
+
+        return view('app.owner.products.barcode-print', compact('product', 'barcodeHtml', 'sku'))
+            ->with('qty', $validated['qty']);
     }
 }

@@ -18,8 +18,8 @@ class StockMovement extends Model
         $label = ucwords($label);
 
         if ($this->reference_type === 'production') {
-            $code = optional($this->batch?->production_code)
-                ?? optional(\App\Models\ProductionOrder::find($this->reference_id))?->production_code;
+            $code = $this->batch?->production_code
+                ?? \App\Models\ProductionOrder::find($this->reference_id)?->production_code;
             if ($code) {
                 return "Produksi ({$code})";
             }
@@ -35,6 +35,7 @@ class StockMovement extends Model
         'item_type',
         'item_id',
         'batch_id',
+        'batch_type',
         'movement_type',
         'quantity',
         'reference_type',
@@ -58,6 +59,10 @@ class StockMovement extends Model
 
     public function batch(): BelongsTo
     {
+        if ($this->batch_type === 'product') {
+            return $this->belongsTo(ProductBatch::class, 'batch_id');
+        }
         return $this->belongsTo(RawMaterialBatch::class, 'batch_id');
     }
+
 }

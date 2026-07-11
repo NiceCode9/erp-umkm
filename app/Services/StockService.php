@@ -7,6 +7,9 @@ use App\Models\ProductionConsumption;
 use App\Models\RawMaterial;
 use App\Models\RawMaterialBatch;
 use App\Models\StockMovement;
+use App\Models\SaleItem;
+use App\Models\SaleItemBatch;
+use App\Models\Sale;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -179,6 +182,7 @@ class StockService
             $batch = ProductBatch::create([
                 'product_id' => $productId,
                 'branch_id' => $branchId,
+                'production_order_id' => $productionOrderId,
                 'batch_no' => $order->production_code ?? 'PROD-' . $order->id,
                 'quantity_remaining' => $quantity,
                 'production_cost' => 0,
@@ -188,7 +192,7 @@ class StockService
             ]);
 
             $this->recordMovement($businessId, $branchId, 'product', $productId,
-                $batch->id, 'in', $quantity, 'production', $productionOrderId, $userId);
+                $batch->id, 'in', $quantity, 'production', $productionOrderId, $userId, 'product');
         });
     }
 
@@ -205,18 +209,18 @@ class StockService
         foreach ($recipe->items as $item) {
             $totalNeeded = $item->qty_per_batch * $batchMultiplier;
             $convertedNeeded = $this->convertUnit(
-                $totalNeeded, $recipe->unit, $recipe->rawMaterial->base_unit
+                $totalNeeded, $item->unit, $item->rawMaterial->base_unit
             );
 
-            $totalAvailable = (float) RawMaterialBatch::where('raw_material_id', $recipe->raw_material_id)
+            $totalAvailable = (float) RawMaterialBatch::where('raw_material_id', $item->raw_material_id)
                 ->where('branch_id', $branchId)
                 ->where('quantity_remaining', '>', 0)
                 ->sum('quantity_remaining');
 
             if ($totalAvailable < $convertedNeeded) {
                 $shortages[] = (object) [
-                    'name' => $recipe->rawMaterial->name,
-                    'unit' => $recipe->rawMaterial->base_unit,
+                    'name' => $item->rawMaterial->name,
+                    'unit' => $item->rawMaterial->base_unit,
                     'needed' => $convertedNeeded,
                     'available' => $totalAvailable,
                     'shortage' => $convertedNeeded - $totalAvailable,
@@ -251,6 +255,7 @@ class StockService
         int $businessId, int $branchId, string $itemType, int $itemId,
         ?int $batchId, string $movementType, float $quantity,
         string $referenceType, int $referenceId, int $userId,
+        ?string $batchType = null,
     ): void {
         StockMovement::create([
             'business_id' => $businessId,
@@ -258,6 +263,7 @@ class StockService
             'item_type' => $itemType,
             'item_id' => $itemId,
             'batch_id' => $batchId,
+            'batch_type' => $batchType ?? $itemType,
             'movement_type' => $movementType,
             'quantity' => $quantity,
             'reference_type' => $referenceType,
@@ -297,5 +303,101 @@ class StockService
         $seq = $last ? (int) substr($last->production_code, -4) + 1 : 1;
 
         return $prefix . str_pad((string) $seq, 4, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Generate invoice number: INV-YYYYMMDD-XXXX (sequential per day).
+     */
+    public function generateInvoiceNo(): string
+    {
+        $date = now()->format('Ymd');
+        $prefix = "INV-{$date}-";
+
+        $last = Sale::where('invoice_no', 'like', "{$prefix}%")
+            ->orderByDesc('id')
+            ->first();
+
+        $seq = $last ? (int) substr($last->invoice_no, -4) + 1 : 1;
+
+        return $prefix . str_pad((string) $seq, 4, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Consume product stock for a sale item using FEFO.
+     * Returns collection of SaleItemBatch records.
+     *
+     * @throws \InvalidArgumentException when stock is insufficient
+     */
+    public function consumeProductStockForSale(
+        int $productId, int $branchId, int $businessId,
+        float $quantityNeeded, int $saleItemId, int $userId,
+    ): Collection {
+        $totalAvailable = (float) ProductBatch::where('product_id', $productId)
+            ->where('branch_id', $branchId)
+            ->where('quantity_remaining', '>', 0)
+            ->sum('quantity_remaining');
+
+        if ($totalAvailable < $quantityNeeded) {
+            throw new \InvalidArgumentException(
+                "Stok produk tidak mencukupi. Tersedia: {$totalAvailable}, diminta: {$quantityNeeded}"
+            );
+        }
+
+        $batches = ProductBatch::where('product_id', $productId)
+            ->where('branch_id', $branchId)
+            ->where('quantity_remaining', '>', 0)
+            ->orderByRaw('COALESCE(expired_date, \'9999-12-31\') ASC')
+            ->get();
+
+        $remaining = $quantityNeeded;
+        $deductions = collect();
+
+        return DB::transaction(function () use (
+            $batches, &$remaining, $saleItemId, $quantityNeeded,
+            $businessId, $branchId, $productId, $userId, $deductions
+        ) {
+            foreach ($batches as $batch) {
+                if ($remaining <= 0) break;
+
+                $deductQty = min($remaining, (float) $batch->quantity_remaining);
+                $batch->decrement('quantity_remaining', $deductQty);
+
+                $sib = SaleItemBatch::create([
+                    'sale_item_id' => $saleItemId,
+                    'product_batch_id' => $batch->id,
+                    'quantity' => $deductQty,
+                ]);
+                $deductions->push($sib);
+
+                $this->recordMovement(
+                    businessId: $businessId,
+                    branchId: $branchId,
+                    itemType: 'product',
+                    itemId: $productId,
+                    batchId: $batch->id,
+                    movementType: 'out',
+                    quantity: $deductQty,
+                    referenceType: 'sale',
+                    referenceId: $saleItemId,
+                    userId: $userId,
+                    batchType: 'product',
+                );
+
+                $remaining -= $deductQty;
+            }
+
+            return $deductions;
+        });
+    }
+
+    /**
+     * Check product stock availability for a sale.
+     */
+    public function checkProductStockAvailability(int $productId, int $branchId): float
+    {
+        return (float) ProductBatch::where('product_id', $productId)
+            ->where('branch_id', $branchId)
+            ->where('quantity_remaining', '>', 0)
+            ->sum('quantity_remaining');
     }
 }

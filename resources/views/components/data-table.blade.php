@@ -10,27 +10,32 @@
             <thead class="bg-muted border-b border-border">
                 <tr>
                     @foreach ($headers as $header)
-                        <th scope="col" class="px-4 py-3 text-left font-semibold text-muted-foreground">
-                            {{ $header }}
-                        </th>
+                        <th scope="col" class="px-4 py-3 text-left font-semibold text-muted-foreground">{{ $header }}</th>
                     @endforeach
                 </tr>
             </thead>
+        @elseif(isset($header) && $header->isNotEmpty())
+            <thead class="bg-muted border-b border-border">
+                {{ $header }}
+            </thead>
         @endif
-        <tbody class="divide-y divide-border">
-            @forelse ($rows as $row)
-                <tr class="hover:bg-muted/50 transition">
-                    @foreach ($row as $cell)
-                        <td class="px-4 py-3">{{ $cell }}</td>
-                    @endforeach
-                </tr>
-            @empty
-                <tr>
-                    <td colspan="{{ count($headers) > 0 ? count($headers) : 1 }}" class="px-4 py-8 text-center text-muted-foreground">
-                        {{ $emptyMessage }}
-                    </td>
-                </tr>
-            @endforelse
-        </tbody>
+
+        @if (count($rows) > 0)
+            <tbody class="divide-y divide-border">
+                @forelse ($rows as $row)
+                    <tr class="hover:bg-muted/50 transition">
+                        @foreach ($row as $cell)
+                            <td class="px-4 py-3">{{ $cell }}</td>
+                        @endforeach
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="{{ max(count($headers), 1) }}" class="px-4 py-8 text-center text-muted-foreground">{{ $emptyMessage }}</td>
+                    </tr>
+                @endforelse
+            </tbody>
+        @else
+            {{ $slot }}
+        @endif
     </table>
 </div>

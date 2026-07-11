@@ -46,6 +46,11 @@ class Product extends Model implements HasMedia
         return $this->hasMany(Recipe::class);
     }
 
+    public function batches(): HasMany
+    {
+        return $this->hasMany(ProductBatch::class);
+    }
+
     public function registerMediaCollections(): void
     {
         $this->addMediaCollection('product_images')

@@ -10,6 +10,7 @@ class ProductBatch extends Model
     protected $fillable = [
         'product_id',
         'branch_id',
+        'production_order_id',
         'batch_no',
         'quantity_remaining',
         'production_cost',
@@ -33,5 +34,10 @@ class ProductBatch extends Model
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);
+    }
+
+    public function productionOrder(): BelongsTo
+    {
+        return $this->belongsTo(ProductionOrder::class);
     }
 }

@@ -2,7 +2,7 @@
     'variant' => 'primary',
     'size' => 'default',
     'disabled' => false,
-    'type' => 'button',
+    'type' => 'submit',
 ])
 
 @php

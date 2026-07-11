@@ -5,7 +5,13 @@
     <x-card>
         <div class="flex justify-between items-start mb-4">
             <div>
-                <h2 class="text-lg font-semibold">{{ $product->name }}</h2>
+                <div class="flex items-center gap-3 mb-1">
+                    <h2 class="text-lg font-semibold">{{ $product->name }}</h2>
+                    <a href="{{ route('app.products.print-barcode.form', $product) }}"
+                        class="px-3 py-1 bg-secondary text-secondary-foreground rounded-[var(--radius)] text-xs font-semibold hover:bg-secondary/90 transition whitespace-nowrap">
+                        Cetak Barcode
+                    </a>
+                </div>
                 <p class="text-sm text-muted-foreground">
                     SKU: {{ $product->sku ?? '-' }} — Satuan: {{ $product->base_unit }} — Harga: {{ format_currency($product->selling_price) }}
                 </p>
