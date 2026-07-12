@@ -282,6 +282,8 @@ Struktur serupa `sales`/`sale_items`, mereferensikan `sale_id` asal.
 | business_id | FK businesses | |
 | branch_id | FK branches | Cabang asal |
 | sale_id | FK sales, nullable | Diisi jika pengiriman terkait barang terjual |
+| recipient_name | string | Nama penerima barang — TIDAK selalu sama dengan `customer_id` (mis. dibeli atas nama toko tapi dikirim ke gudang berbeda, atau transaksi tunai/walk-in tanpa `customer_id` sama sekali). Kalau `sale.customer_id` terisi, boleh auto-terisi sebagai default tapi tetap bisa diedit. |
+| created_by | FK users | Siapa yang input pengiriman ini — Owner ATAU Kasir (lihat `PERMISSIONS.md`) |
 | type | enum(`ecer`,`borongan`) | |
 | destination | text | |
 | status | enum(`pending`,`shipped`,`delivered`) | |

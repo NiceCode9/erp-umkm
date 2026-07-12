@@ -79,6 +79,9 @@
                         <li><a href="{{ route('app.kasir.receivables.index') }}"
                                 class="flex items-center px-4 py-2 rounded-[var(--radius)] text-sm {{ request()->routeIs('app.kasir.receivables.*') ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted' }}">Piutang</a>
                         </li>
+                        <li><a href="{{ route('app.kasir.shipments.index') }}"
+                                class="flex items-center px-4 py-2 rounded-[var(--radius)] text-sm {{ request()->routeIs('app.kasir.shipments.*') ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted' }}">Pengiriman</a>
+                        </li>
                         <li class="pt-2 mt-2 border-t border-border"><a href="{{ route('app.kasir.shifts.close') }}"
                                 class="flex items-center px-4 py-2 rounded-[var(--radius)] text-sm {{ request()->routeIs('app.kasir.shifts.close') ? 'bg-destructive text-destructive-foreground' : 'text-destructive hover:bg-destructive/10' }}">Tutup Shift</a></li>
                     @endrole

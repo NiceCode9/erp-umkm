@@ -18,6 +18,7 @@ class Shipment extends Model
         'user_id',
         'type',
         'destination',
+        'recipient_name',
         'status',
         'shipped_at',
         'delivered_at',

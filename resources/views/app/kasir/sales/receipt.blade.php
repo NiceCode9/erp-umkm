@@ -105,12 +105,18 @@
     </div>
 </div>
 
-<div class="max-w-sm mx-auto mt-4 text-center print-actions">
-    <a href="{{ route('app.kasir.pos') }}" class="inline-block px-6 py-3 bg-green-500 text-white rounded font-semibold hover:bg-green-600 transition">
-        Transaksi Baru
+<div class="max-w-sm mx-auto mt-4 text-center print-actions space-y-2">
+    <div class="flex gap-2 justify-center">
+        <a href="{{ route('app.kasir.pos') }}" class="flex-1 inline-block px-6 py-3 bg-green-500 text-white rounded font-semibold hover:bg-green-600 transition">
+            Transaksi Baru
+        </a>
+        <button onclick="window.print()" class="flex-1 inline-block px-6 py-3 border border-gray-300 rounded font-semibold hover:bg-gray-100 transition">
+            Cetak Ulang
+        </button>
+    </div>
+    <a href="{{ route('app.kasir.shipments.create-from-sale', $sale) }}"
+        class="block w-full px-4 py-2 border border-secondary text-secondary rounded font-medium hover:bg-secondary/5 transition text-sm">
+        Butuh Pengiriman?
     </a>
-    <button onclick="window.print()" class="inline-block px-6 py-3 ml-2 border border-gray-300 rounded font-semibold hover:bg-gray-100 transition">
-        Cetak Ulang
-    </button>
 </div>
 @endsection

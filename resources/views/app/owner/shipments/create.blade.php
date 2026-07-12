@@ -53,6 +53,11 @@
 
             <div class="grid grid-cols-2 gap-4">
                 <div>
+                    <x-input-label for="recipient_name" value="Nama Penerima" />
+                    <x-input id="recipient_name" name="recipient_name" type="text" class="mt-1 block w-full" placeholder="Nama penerima barang" value="{{ old('recipient_name', $sales->firstWhere('id', old('sale_id'))?->customer_name ?? '') }}" required />
+                    <x-input-error :messages="$errors->get('recipient_name')" class="mt-1" />
+                </div>
+                <div>
                     <x-input-label for="branch_id" value="Cabang Asal" />
                     <select id="branch_id" name="branch_id" class="mt-1 block w-full border border-input rounded-[var(--radius)] px-3 py-2 focus:ring-2 focus:ring-ring focus:border-transparent" required>
                         <option value="">Pilih Cabang</option>

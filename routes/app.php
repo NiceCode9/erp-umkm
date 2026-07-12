@@ -22,6 +22,7 @@ use App\Http\Controllers\App\Owner\SaleReturnController;
 use App\Http\Controllers\App\Owner\ReceivableController;
 use App\Http\Controllers\App\Owner\ShipmentController;
 use App\Http\Controllers\App\Kasir\ReceivableController as KasirReceivableController;
+use App\Http\Controllers\App\Kasir\ShipmentController as KasirShipmentController;
 
 Route::prefix('app')
     ->name('app.')
@@ -56,6 +57,13 @@ Route::prefix('app')
                         Route::get('/', [KasirReceivableController::class, 'index'])->name('index');
                         Route::get('{sale}/pay', [KasirReceivableController::class, 'payForm'])->name('pay');
                         Route::post('{sale}/pay', [KasirReceivableController::class, 'payStore'])->name('pay.store');
+                    });
+
+                    Route::prefix('shipments')->name('shipments.')->group(function () {
+                        Route::get('/', [KasirShipmentController::class, 'index'])->name('index');
+                        Route::get('create-from-sale/{sale}', [KasirShipmentController::class, 'createFromSale'])->name('create-from-sale');
+                        Route::post('/', [KasirShipmentController::class, 'store'])->name('store');
+                        Route::get('{shipment}', [KasirShipmentController::class, 'show'])->name('show');
                     });
                 });
             });

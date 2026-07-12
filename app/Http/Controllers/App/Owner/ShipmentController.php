@@ -34,7 +34,7 @@ class ShipmentController extends Controller
             ->where('is_active', true)->orderBy('name')->get();
 
         $sales = Sale::where('business_id', $businessId)
-            ->with(['items.product', 'branch', 'customer_name'])
+            ->with(['items.product', 'branch'])
             ->orderByDesc('created_at')
             ->get();
 
@@ -53,6 +53,7 @@ class ShipmentController extends Controller
             'sale_id' => 'nullable|exists:sales,id',
             'type' => 'required|in:ecer,borongan',
             'destination' => 'required|string|max:1000',
+            'recipient_name' => 'required|string|max:255',
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.sale_item_id' => 'nullable|exists:sale_items,id',
@@ -73,6 +74,7 @@ class ShipmentController extends Controller
                 'user_id' => $userId,
                 'type' => $validated['type'],
                 'destination' => $validated['destination'],
+                'recipient_name' => $validated['recipient_name'],
                 'status' => 'pending',
             ]);
 

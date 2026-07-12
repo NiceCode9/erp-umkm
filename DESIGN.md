@@ -118,11 +118,12 @@ Menggunakan CSS custom properties (`:root`), terinspirasi palet Duolingo — cer
   - Tombol "Bayar"/"Selesaikan Transaksi" besar, warna primary, posisi tetap terlihat tanpa perlu scroll.
   - Input diskon & indikator tax terlihat jelas sebelum konfirmasi pembayaran.
 - Minimalkan jumlah halaman/klik untuk menyelesaikan satu transaksi (idealnya 1 layar, bukan multi-step wizard).
+- **Layar konfirmasi setelah checkout berhasil**: tampilkan ringkasan transaksi + tombol cetak struk, DAN tombol opsional **"Butuh Pengiriman?"** (`<x-button>` secondary, bukan primary — supaya tidak mengalihkan perhatian dari alur normal) yang langsung membuka form Pengiriman dengan `sale_id` transaksi ini sudah terisi otomatis. Tombol ini TIDAK WAJIB diklik — kebanyakan transaksi selesai tanpa menyentuhnya sama sekali.
 
 ## 5. Navigasi
 
 - Sidebar navigasi untuk Owner: dikelompokkan per domain (Dashboard, Bahan Baku, Produksi, Pembelian, Penjualan, Pengiriman, Distribusi Cabang, **Riwayat Stok** (ledger umum lintas item, lihat `PRD.md` bagian 6.3), Keuangan, Pengaturan).
-- Navigasi Kasir: dibuat sangat ringkas — hanya Kasir (transaksi), Riwayat Penjualan, Profil. Jangan tampilkan menu yang tidak relevan dengan role Kasir (lihat `PERMISSIONS.md`).
+- Navigasi Kasir: Kasir (transaksi), Riwayat Penjualan, **Pengiriman** (hanya transaksi miliknya sendiri — lihat `BUSINESS-RULES.md` bagian 7), Profil. Jangan tampilkan menu yang tidak relevan dengan role Kasir (lihat `PERMISSIONS.md`).
 - **Menu dinamis:** karena sistem permission bisa berubah, sidebar sebaiknya di-generate dari permission yang dimiliki user (bukan hardcode per role di Blade), agar konsisten dengan `PERMISSIONS.md`.
 
 ## 6. Halaman Autentikasi (Laravel Breeze)

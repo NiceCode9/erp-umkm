@@ -48,7 +48,8 @@ Dikelola menggunakan `spatie/laravel-permission`. Tiga role utama: **Superadmin*
 | Buka/tutup shift | ❌ | ❌ | ✅ |
 | Lihat rekap shift semua kasir | ❌ | ✅ | ❌ |
 | **Pengiriman** | | | |
-| Input & kelola pengiriman | ❌ | ✅ | ❌ |
+| Input pengiriman (dari transaksi miliknya sendiri) | ❌ | ✅ | ✅ (transaksi di cabangnya) |
+| Kelola/lihat SEMUA pengiriman lintas cabang & kasir | ❌ | ✅ | ❌ |
 | **Utang Piutang** | | | |
 | Lihat & kelola utang ke supplier | ❌ | ✅ | ❌ |
 | Lihat & kelola piutang dari pembeli | ❌ | ✅ | ❌ |
@@ -70,6 +71,7 @@ Dikelola menggunakan `spatie/laravel-permission`. Tiga role utama: **Superadmin*
 
 - Kasir **boleh** menerima dan mencatat pembayaran cicilan piutang pelanggan, terbatas pada transaksi di cabangnya sendiri.
 - **Tidak ada self-registration.** Akun hanya dibuat melalui: Superadmin membuat business + akun Owner awal sekaligus; Owner membuat akun Kasir. Tidak ada role yang bisa mendaftar sendiri lewat halaman publik (lihat `AGENTS.md` bagian 3.1).
+- **Kasir boleh input pengiriman** untuk transaksi penjualan miliknya sendiri di cabangnya (bukan cuma Owner) — lihat `BUSINESS-RULES.md` bagian 7 untuk alur lengkapnya. Kasir TIDAK bisa melihat/kelola pengiriman lintas cabang atau kasir lain.
 
 ## 4. Implementasi Teknis (Referensi untuk AGENTS.md)
 
