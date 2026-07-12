@@ -127,8 +127,17 @@ Route::prefix('app')
                 Route::get('/create', [ShipmentController::class, 'create'])->name('create');
                 Route::post('/', [ShipmentController::class, 'store'])->name('store');
                 Route::get('{shipment}', [ShipmentController::class, 'show'])->name('show');
-                Route::post('{shipment}/update-status', [ShipmentController::class, 'updateStatus'])->name('update-status');
-            });
+            Route::post('{shipment}/update-status', [ShipmentController::class, 'updateStatus'])->name('update-status');
+        });
+
+        Route::prefix('stock-distributions')->name('owner.stock-distributions.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\App\Owner\StockDistributionController::class, 'index'])->name('index');
+            Route::get('/create', [\App\Http\Controllers\App\Owner\StockDistributionController::class, 'create'])->name('create');
+            Route::post('/', [\App\Http\Controllers\App\Owner\StockDistributionController::class, 'store'])->name('store');
+            Route::get('{stock_distribution}', [\App\Http\Controllers\App\Owner\StockDistributionController::class, 'show'])->name('show');
+            Route::post('{stock_distribution}/ship', [\App\Http\Controllers\App\Owner\StockDistributionController::class, 'ship'])->name('ship');
+            Route::post('{stock_distribution}/receive', [\App\Http\Controllers\App\Owner\StockDistributionController::class, 'receive'])->name('receive');
+        });
         });
 
 

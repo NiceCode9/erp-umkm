@@ -13,6 +13,9 @@ use App\Models\Sale;
 use App\Models\SalePayment;
 use App\Models\SaleReturn;
 use App\Models\PurchasePayment;
+use App\Models\StockDistributionItemBatch;
+use App\Models\StockDistributionItem;
+use App\Models\StockDistribution;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -504,5 +507,249 @@ class StockService
         $purchase->update(['payment_status' => $status]);
 
         return $status;
+    }
+
+    /**
+     * Execute stock distribution (change status to shipped):
+     * deduct stock at origin using FEFO, record batch usage.
+     *
+     * @throws \InvalidArgumentException
+     */
+    public function distributeStockForShip(int $distributionId, int $userId): StockDistribution
+    {
+        $distribution = StockDistribution::with('items')->findOrFail($distributionId);
+
+        if ($distribution->status !== 'pending') {
+            throw new \InvalidArgumentException('Distribusi sudah pernah dikirim.');
+        }
+
+        return DB::transaction(function () use ($distribution, $userId) {
+            foreach ($distribution->items as $item) {
+                if ($item->item_type === 'raw_material') {
+                    $this->distributeRawMaterialItem($item, $userId);
+                } elseif ($item->item_type === 'product') {
+                    $this->distributeProductItem($item, $userId);
+                }
+            }
+
+            $distribution->update([
+                'status' => 'shipped',
+                'shipped_at' => now(),
+            ]);
+
+            return $distribution;
+        });
+    }
+
+    private function distributeRawMaterialItem(StockDistributionItem $item, int $userId): void
+    {
+        $needed = (float) $item->quantity;
+        $branchId = $item->distribution->origin_branch_id;
+        $businessId = $item->distribution->business_id;
+
+        $totalAvailable = (float) RawMaterialBatch::where('raw_material_id', $item->item_id)
+            ->where('branch_id', $branchId)
+            ->where('quantity_remaining', '>', 0)
+            ->sum('quantity_remaining');
+
+        if ($totalAvailable < $needed) {
+            $name = $item->rawMaterial?->name ?? "bahan baku #{$item->item_id}";
+            throw new \InvalidArgumentException(
+                "Stok {$name} di cabang asal tidak mencukupi. Tersedia: {$totalAvailable}, diminta: {$needed}"
+            );
+        }
+
+        $batches = RawMaterialBatch::where('raw_material_id', $item->item_id)
+            ->where('branch_id', $branchId)
+            ->where('quantity_remaining', '>', 0)
+            ->orderByRaw('COALESCE(expired_date, \'9999-12-31\') ASC')
+            ->get();
+
+        $remaining = $needed;
+        foreach ($batches as $batch) {
+            if ($remaining <= 0) break;
+
+            $deductQty = min($remaining, (float) $batch->quantity_remaining);
+            $batch->decrement('quantity_remaining', $deductQty);
+
+            StockDistributionItemBatch::create([
+                'stock_distribution_item_id' => $item->id,
+                'raw_material_batch_id' => $batch->id,
+                'product_batch_id' => null,
+                'quantity' => $deductQty,
+            ]);
+
+            $this->recordMovement(
+                businessId: $businessId,
+                branchId: $branchId,
+                itemType: 'raw_material',
+                itemId: $item->item_id,
+                batchId: $batch->id,
+                movementType: 'out',
+                quantity: $deductQty,
+                referenceType: 'stock_distribution',
+                referenceId: $item->distribution->id,
+                userId: $userId,
+                batchType: 'raw_material',
+            );
+
+            $remaining -= $deductQty;
+        }
+    }
+
+    private function distributeProductItem(StockDistributionItem $item, int $userId): void
+    {
+        $needed = (float) $item->quantity;
+        $branchId = $item->distribution->origin_branch_id;
+        $businessId = $item->distribution->business_id;
+
+        $totalAvailable = (float) ProductBatch::where('product_id', $item->item_id)
+            ->where('branch_id', $branchId)
+            ->where('quantity_remaining', '>', 0)
+            ->sum('quantity_remaining');
+
+        if ($totalAvailable < $needed) {
+            $name = $item->product?->name ?? "produk #{$item->item_id}";
+            throw new \InvalidArgumentException(
+                "Stok {$name} di cabang asal tidak mencukupi. Tersedia: {$totalAvailable}, diminta: {$needed}"
+            );
+        }
+
+        $batches = ProductBatch::where('product_id', $item->item_id)
+            ->where('branch_id', $branchId)
+            ->where('quantity_remaining', '>', 0)
+            ->orderByRaw('COALESCE(expired_date, \'9999-12-31\') ASC')
+            ->get();
+
+        $remaining = $needed;
+        foreach ($batches as $batch) {
+            if ($remaining <= 0) break;
+
+            $deductQty = min($remaining, (float) $batch->quantity_remaining);
+            $batch->decrement('quantity_remaining', $deductQty);
+
+            StockDistributionItemBatch::create([
+                'stock_distribution_item_id' => $item->id,
+                'product_batch_id' => $batch->id,
+                'raw_material_batch_id' => null,
+                'quantity' => $deductQty,
+            ]);
+
+            $this->recordMovement(
+                businessId: $businessId,
+                branchId: $branchId,
+                itemType: 'product',
+                itemId: $item->item_id,
+                batchId: $batch->id,
+                movementType: 'out',
+                quantity: $deductQty,
+                referenceType: 'stock_distribution',
+                referenceId: $item->distribution->id,
+                userId: $userId,
+                batchType: 'product',
+            );
+
+            $remaining -= $deductQty;
+        }
+    }
+
+    /**
+     * Complete stock distribution (change status to received):
+     * create NEW batches at destination with same expired_date & metadata.
+     */
+    public function distributeStockForReceive(int $distributionId, int $userId): StockDistribution
+    {
+        $distribution = StockDistribution::with(['items.batchRecords'])->findOrFail($distributionId);
+
+        if ($distribution->status !== 'shipped') {
+            throw new \InvalidArgumentException('Distribusi harus dalam status dikirim.');
+        }
+
+        return DB::transaction(function () use ($distribution, $userId) {
+            foreach ($distribution->items as $item) {
+                foreach ($item->batchRecords as $record) {
+                    if ($item->item_type === 'raw_material') {
+                        $sourceBatch = RawMaterialBatch::findOrFail($record->raw_material_batch_id);
+
+                        $newBatch = RawMaterialBatch::create([
+                            'raw_material_id' => $item->item_id,
+                            'branch_id' => $distribution->destination_branch_id,
+                            'batch_no' => $sourceBatch->batch_no . '-DST',
+                            'quantity_remaining' => (float) $record->quantity,
+                            'purchase_price' => $sourceBatch->purchase_price,
+                            'expired_date' => $sourceBatch->expired_date,
+                            'received_at' => now(),
+                        ]);
+
+                        $this->recordMovement(
+                            businessId: $distribution->business_id,
+                            branchId: $distribution->destination_branch_id,
+                            itemType: 'raw_material',
+                            itemId: $item->item_id,
+                            batchId: $newBatch->id,
+                            movementType: 'in',
+                            quantity: (float) $record->quantity,
+                            referenceType: 'stock_distribution',
+                            referenceId: $distribution->id,
+                            userId: $userId,
+                            batchType: 'raw_material',
+                        );
+                    } else {
+                        $sourceBatch = ProductBatch::findOrFail($record->product_batch_id);
+
+                        $newBatch = ProductBatch::create([
+                            'product_id' => $item->item_id,
+                            'branch_id' => $distribution->destination_branch_id,
+                            'batch_no' => $sourceBatch->batch_no . '-DST',
+                            'quantity_remaining' => (float) $record->quantity,
+                            'production_cost' => $sourceBatch->production_cost,
+                            'production_code' => $sourceBatch->production_code,
+                            'expired_date' => $sourceBatch->expired_date,
+                            'produced_at' => $sourceBatch->produced_at,
+                        ]);
+
+                        $this->recordMovement(
+                            businessId: $distribution->business_id,
+                            branchId: $distribution->destination_branch_id,
+                            itemType: 'product',
+                            itemId: $item->item_id,
+                            batchId: $newBatch->id,
+                            movementType: 'in',
+                            quantity: (float) $record->quantity,
+                            referenceType: 'stock_distribution',
+                            referenceId: $distribution->id,
+                            userId: $userId,
+                            batchType: 'product',
+                        );
+                    }
+                }
+            }
+
+            $distribution->update([
+                'status' => 'received',
+                'received_at' => now(),
+            ]);
+
+            return $distribution;
+        });
+    }
+
+    /**
+     * Check total stock for an item (raw_material or product) at a branch,
+     * excluding stock that is already in transit (shipped distributions).
+     */
+    public function checkDistributionStockAvailability(string $itemType, int $itemId, int $branchId): float
+    {
+        if ($itemType === 'raw_material') {
+            return (float) RawMaterialBatch::where('raw_material_id', $itemId)
+                ->where('branch_id', $branchId)
+                ->where('quantity_remaining', '>', 0)
+                ->sum('quantity_remaining');
+        }
+
+        return (float) ProductBatch::where('product_id', $itemId)
+            ->where('branch_id', $branchId)
+            ->where('quantity_remaining', '>', 0)
+            ->sum('quantity_remaining');
     }
 }
