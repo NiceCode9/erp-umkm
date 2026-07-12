@@ -60,6 +60,12 @@
                         <li><a href="{{ route('app.owner.shifts.index') }}"
                                 class="flex items-center px-4 py-2 rounded-[var(--radius)] text-sm {{ request()->routeIs('app.owner.shifts.*') ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted' }}">Rekap Shift</a>
                         </li>
+                        <li><a href="{{ route('app.owner.receivables.index') }}"
+                                class="flex items-center px-4 py-2 rounded-[var(--radius)] text-sm {{ request()->routeIs('app.owner.receivables.*') ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted' }}">Piutang</a>
+                        </li>
+                        <li><a href="{{ route('app.owner.shipments.index') }}"
+                                class="flex items-center px-4 py-2 rounded-[var(--radius)] text-sm {{ request()->routeIs('app.owner.shipments.*') ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted' }}">Pengiriman</a>
+                        </li>
                         @elserole('Kasir')
                         <li><a href="{{ route('app.dashboard') }}"
                                 class="flex items-center px-4 py-2 rounded-[var(--radius)] text-sm {{ request()->routeIs('app.dashboard') ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted' }}">Dashboard</a>
@@ -70,6 +76,9 @@
                         <li><a href="{{ route('app.kasir.sales.index') }}"
                                 class="flex items-center px-4 py-2 rounded-[var(--radius)] text-sm {{ request()->routeIs('app.kasir.sales.*') ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted' }}">Riwayat
                                 Penjualan</a></li>
+                        <li><a href="{{ route('app.kasir.receivables.index') }}"
+                                class="flex items-center px-4 py-2 rounded-[var(--radius)] text-sm {{ request()->routeIs('app.kasir.receivables.*') ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted' }}">Piutang</a>
+                        </li>
                         <li class="pt-2 mt-2 border-t border-border"><a href="{{ route('app.kasir.shifts.close') }}"
                                 class="flex items-center px-4 py-2 rounded-[var(--radius)] text-sm {{ request()->routeIs('app.kasir.shifts.close') ? 'bg-destructive text-destructive-foreground' : 'text-destructive hover:bg-destructive/10' }}">Tutup Shift</a></li>
                     @endrole

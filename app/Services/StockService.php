@@ -10,6 +10,9 @@ use App\Models\StockMovement;
 use App\Models\SaleItem;
 use App\Models\SaleItemBatch;
 use App\Models\Sale;
+use App\Models\SalePayment;
+use App\Models\SaleReturn;
+use App\Models\PurchasePayment;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -399,5 +402,107 @@ class StockService
             ->where('branch_id', $branchId)
             ->where('quantity_remaining', '>', 0)
             ->sum('quantity_remaining');
+    }
+
+    /**
+     * Return product stock from a sale return — restock to ORIGINAL batch
+     * using sale_item_batches data (preserves expired_date for FEFO accuracy).
+     *
+     * @return Collection of SaleItemBatch records that were restored
+     */
+    public function returnProductStockFromSale(
+        int $saleItemId, float $quantityToReturn, int $saleReturnItemId, int $userId,
+    ): Collection {
+        $sibRecords = SaleItemBatch::where('sale_item_id', $saleItemId)
+            ->where('quantity', '>', 0)
+            ->orderBy('id')
+            ->get();
+
+        if ($sibRecords->isEmpty()) {
+            throw new \InvalidArgumentException('Tidak ada data batch untuk item penjualan ini.');
+        }
+
+        $totalAvailable = (float) $sibRecords->sum('quantity');
+        if ($quantityToReturn > $totalAvailable) {
+            throw new \InvalidArgumentException(
+                "Qty retur ({$quantityToReturn}) melebihi qty yang tercatat di batch ({$totalAvailable})."
+            );
+        }
+
+        $item = $sibRecords->first()->saleItem;
+        $sale = $item->sale;
+        $remaining = $quantityToReturn;
+        $restored = collect();
+
+        return DB::transaction(function () use (
+            $sibRecords, &$remaining, $saleReturnItemId,
+            $sale, $item, $userId, $restored
+        ) {
+            foreach ($sibRecords as $sib) {
+                if ($remaining <= 0) break;
+
+                $batch = ProductBatch::findOrFail($sib->product_batch_id);
+                $restoreQty = min($remaining, (float) $sib->quantity);
+
+                $batch->increment('quantity_remaining', $restoreQty);
+
+                $this->recordMovement(
+                    businessId: $sale->business_id,
+                    branchId: $sale->branch_id,
+                    itemType: 'product',
+                    itemId: $item->product_id,
+                    batchId: $batch->id,
+                    movementType: 'in',
+                    quantity: $restoreQty,
+                    referenceType: 'sale_return',
+                    referenceId: $saleReturnItemId,
+                    userId: $userId,
+                    batchType: 'product',
+                );
+
+                $restored->push((object) [
+                    'batch_id' => $batch->id,
+                    'batch_no' => $batch->batch_no,
+                    'expired_date' => $batch->expired_date,
+                    'quantity' => $restoreQty,
+                ]);
+
+                $remaining -= $restoreQty;
+            }
+
+            return $restored;
+        });
+    }
+
+    /**
+     * Recalculate sale payment_status based on formula:
+     * outstanding = total_amount - SUM(sale_payments) - SUM(sale_returns.total_amount)
+     */
+    public function recalculateSalePaymentStatus(Sale $sale): string
+    {
+        $totalPaid = (float) SalePayment::where('sale_id', $sale->id)->sum('amount');
+        $totalReturned = (float) SaleReturn::where('sale_id', $sale->id)->sum('total_amount');
+        $outstanding = (float) $sale->total_amount - $totalPaid - $totalReturned;
+
+        $status = $outstanding <= 0 ? 'paid' : ($totalPaid > 0 ? 'partial' : 'unpaid');
+
+        Sale::withoutGlobalScopes()->where('id', $sale->id)->update(['payment_status' => $status]);
+
+        return $status;
+    }
+
+    /**
+     * Recalculate purchase payment_status (mirror of sale logic for consistency).
+     */
+    public function recalculatePurchasePaymentStatus(\App\Models\Purchase $purchase): string
+    {
+        $totalPaid = (float) PurchasePayment::where('purchase_id', $purchase->id)->sum('amount');
+        $outstanding = (float) $purchase->total_amount - $totalPaid;
+
+        $status = $outstanding <= 0 ? 'paid' : ($totalPaid > 0 ? 'partial' : 'unpaid');
+
+        $purchase->update(['payment_status' => $status]);
+
+        return $status;
     }
 }

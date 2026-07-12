@@ -7,29 +7,26 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class SaleReturn extends Model
+class Shipment extends Model
 {
     use BelongsToBusiness;
 
     protected $fillable = [
-        'sale_id',
         'business_id',
         'branch_id',
+        'sale_id',
         'user_id',
-        'return_date',
-        'reason',
-        'total_amount',
+        'type',
+        'destination',
+        'status',
+        'shipped_at',
+        'delivered_at',
     ];
 
     protected $casts = [
-        'return_date' => 'date',
-        'total_amount' => 'decimal:2',
+        'shipped_at' => 'datetime',
+        'delivered_at' => 'datetime',
     ];
-
-    public function sale(): BelongsTo
-    {
-        return $this->belongsTo(Sale::class);
-    }
 
     public function business(): BelongsTo
     {
@@ -41,6 +38,11 @@ class SaleReturn extends Model
         return $this->belongsTo(Branch::class);
     }
 
+    public function sale(): BelongsTo
+    {
+        return $this->belongsTo(Sale::class);
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -48,6 +50,6 @@ class SaleReturn extends Model
 
     public function items(): HasMany
     {
-        return $this->hasMany(SaleReturnItem::class);
+        return $this->hasMany(ShipmentItem::class);
     }
 }

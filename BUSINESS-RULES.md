@@ -106,12 +106,27 @@ Dokumen ini merinci logika yang WAJIB diimplementasikan secara konsisten via Ser
 ## 6. Piutang dari Pembeli (dari Penjualan)
 
 - Berlaku logika yang sama seperti utang supplier, tapi pada tabel `sales` dan `sale_payments`.
-- Piutang outstanding = `total_amount - SUM(sale_payments.amount)`.
+- **Piutang outstanding (formula final, memperhitungkan retur):**
+
+  ```
+  piutang_outstanding = total_amount - SUM(sale_payments.amount) - SUM(sale_returns.total_amount)
+  ```
+
+  `sales.total_amount` TETAP snapshot immutable (tidak pernah diubah setelah transaksi dibuat, konsisten dengan prinsip snapshot di bagian 3-4) — retur TIDAK mengubah `total_amount`, tapi otomatis mengurangi piutang outstanding lewat formula ini. `payment_status` (`unpaid`/`partial`/`paid`) dihitung ulang otomatis dari formula ini setiap ada `sale_payments` ATAU `sale_returns` baru — Owner TIDAK perlu input pembayaran manual terpisah untuk mencerminkan efek retur.
 - Kasir dapat mencatat pembayaran cicilan piutang untuk transaksi di cabangnya sendiri (lihat `PERMISSIONS.md`).
-- Notifikasi jatuh tempo (fase lanjutan): perlu kolom `due_date` di `sales` untuk transaksi non-tunai, dipakai sebagai basis reminder.
+- **Notifikasi jatuh tempo (KEPUTUSAN — belum diimplementasikan fase ini):** TIDAK menambah kolom `due_date` untuk saat ini. Sebagai gantinya, daftar piutang/utang outstanding diurutkan dari yang **paling lama belum dibayar** (`created_at ASC`) sebagai proxy sementara. Kolom `due_date` (dan aturan default-nya — X hari dari transaksi, atau custom per transaksi/customer) baru didiskusikan detail saat benar-benar dibutuhkan di fase lanjutan.
+
+## 6.1 Retur Penjualan & Pengembalian Stok
+
+- Retur penjualan mengembalikan stok ke **batch asal** — pakai data `sale_item_batches` yang tercatat saat checkout (bagian 2.1) untuk tahu batch mana & berapa qty yang harus dikembalikan, termasuk `expired_date`-nya. INI DEFAULT, bukan opsional — jangan buat batch baru tanpa `expired_date` untuk retur, karena informasi batch aslinya sudah tersedia dan lebih akurat untuk FEFO & audit ke depannya.
+- Retur dicatat sebagai `sale_returns` + `sale_return_items`, dengan `stock_movements` (`movement_type = in`, `reference_type = sale_return`, `batch_id` merujuk batch asal yang dikembalikan).
+- Efek ke piutang: lihat formula di bagian 6 — retur otomatis mengurangi piutang outstanding, TIDAK mengubah `sales.total_amount`.
 
 ## 7. Pengiriman ke Pembeli (Ecer vs Borongan)
 
+- **Sumber item pengiriman (KEPUTUSAN):**
+  - Jika `shipments.sale_id` TERISI: item pengiriman **otomatis diambil dari `sale_items`** transaksi tersebut — Owner memilih qty per item (mendukung pengiriman parsial/bertahap dari satu transaksi penjualan yang sama). TIDAK ADA input produk manual bebas dalam kasus ini, mencegah pengiriman produk yang tidak sesuai dengan yang benar-benar terjual.
+  - Jika `shipments.sale_id` KOSONG (pengiriman/distribusi berdiri sendiri, bukan terkait penjualan tertentu): item pengiriman diinput **manual bebas** (produk & qty tidak terikat referensi apapun).
 - `shipments.type = 'ecer'` — pengiriman satuan kecil ke pembeli, biasanya tanpa keterkaitan langsung ke satu `sale_id` besar (bisa multiple pengiriman kecil).
 - `shipments.type = 'borongan'` — pengiriman jumlah besar ke pembeli, umumnya terkait satu `sale_id` dengan volume besar.
 - Pengiriman barang terjual (`sale_id` terisi) tidak mengubah stok lagi (stok sudah dikurangi saat transaksi penjualan dibuat) — `shipments` di kasus ini murni pencatatan status logistik (pending/shipped/delivered).

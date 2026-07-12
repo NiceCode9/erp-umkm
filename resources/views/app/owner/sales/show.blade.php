@@ -9,7 +9,10 @@
             <h1 class="text-2xl font-bold text-foreground">Detail Penjualan</h1>
             <p class="text-muted-foreground">{{ $sale->invoice_no }}</p>
         </div>
-        <a href="{{ route('app.owner.sales.index') }}" class="px-4 py-2 border border-border rounded-[var(--radius)] hover:bg-muted transition text-sm">Kembali</a>
+        <div class="flex gap-2">
+            <a href="{{ route('app.owner.sales.return.create', $sale) }}" class="px-4 py-2 bg-warning text-warning-foreground rounded-[var(--radius)] font-semibold hover:bg-warning/90 transition text-sm">Retur</a>
+            <a href="{{ route('app.owner.sales.index') }}" class="px-4 py-2 border border-border rounded-[var(--radius)] hover:bg-muted transition text-sm">Kembali</a>
+        </div>
     </div>
 
     <x-card class="mb-6">

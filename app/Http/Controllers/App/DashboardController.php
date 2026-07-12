@@ -4,8 +4,13 @@ namespace App\Http\Controllers\App;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
+use App\Models\Purchase;
+use App\Models\PurchasePayment;
 use App\Models\RawMaterial;
 use App\Models\RawMaterialBatch;
+use App\Models\Sale;
+use App\Models\SalePayment;
+use App\Models\SaleReturn;
 use App\Services\StockService;
 use Illuminate\View\View;
 
@@ -48,8 +53,32 @@ class DashboardController extends Controller
                 ->where('halal_cert_expired_date', '<', $now)
                 ->get();
 
+            $outstandingPurchases = Purchase::where('business_id', $businessId)
+                ->where('payment_status', '!=', 'paid')
+                ->with(['supplier', 'payments'])
+                ->orderBy('created_at')
+                ->get()
+                ->map(function ($p) {
+                    $paid = (float) $p->payments->sum('amount');
+                    $p->outstanding = (float) $p->total_amount - $paid;
+                    return $p;
+                });
+
+            $outstandingSales = Sale::where('business_id', $businessId)
+                ->where('payment_status', '!=', 'paid')
+                ->with(['payments', 'returns'])
+                ->orderBy('created_at')
+                ->get()
+                ->map(function ($s) {
+                    $paid = (float) $s->payments->sum('amount');
+                    $returned = (float) $s->returns->sum('total_amount');
+                    $s->outstanding = (float) $s->total_amount - $paid - $returned;
+                    return $s;
+                });
+
             return view('app.dashboard-owner', compact(
-                'lowStockMaterials', 'halalExpiringSoon', 'halalExpired'
+                'lowStockMaterials', 'halalExpiringSoon', 'halalExpired',
+                'outstandingPurchases', 'outstandingSales'
             ));
         }
 

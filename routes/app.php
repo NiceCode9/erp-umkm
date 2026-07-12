@@ -18,6 +18,10 @@ use App\Http\Controllers\App\Owner\StockMovementController;
 use App\Http\Controllers\App\Owner\RecipeController;
 use App\Http\Controllers\App\Owner\ProductionController;
 use App\Http\Controllers\App\Owner\ShiftController;
+use App\Http\Controllers\App\Owner\SaleReturnController;
+use App\Http\Controllers\App\Owner\ReceivableController;
+use App\Http\Controllers\App\Owner\ShipmentController;
+use App\Http\Controllers\App\Kasir\ReceivableController as KasirReceivableController;
 
 Route::prefix('app')
     ->name('app.')
@@ -46,6 +50,12 @@ Route::prefix('app')
                         Route::post('/checkout', [KasirSaleController::class, 'checkout'])->name('checkout');
                         Route::get('/receipt/{sale}', [KasirSaleController::class, 'receipt'])->name('receipt');
                         Route::get('/', [KasirSaleController::class, 'history'])->name('index');
+                    });
+
+                    Route::prefix('receivables')->name('receivables.')->group(function () {
+                        Route::get('/', [KasirReceivableController::class, 'index'])->name('index');
+                        Route::get('{sale}/pay', [KasirReceivableController::class, 'payForm'])->name('pay');
+                        Route::post('{sale}/pay', [KasirReceivableController::class, 'payStore'])->name('pay.store');
                     });
                 });
             });
@@ -90,5 +100,28 @@ Route::prefix('app')
             Route::prefix('shifts')->name('owner.shifts.')->group(function () {
                 Route::get('/', [ShiftController::class, 'index'])->name('index');
             });
+
+            Route::prefix('receivables')->name('owner.receivables.')->group(function () {
+                Route::get('/', [ReceivableController::class, 'index'])->name('index');
+                Route::get('{sale}/pay', [ReceivableController::class, 'payForm'])->name('pay');
+                Route::post('{sale}/pay', [ReceivableController::class, 'payStore'])->name('pay.store');
+            });
+
+            Route::prefix('sales/{sale}/return')->name('owner.sales.return.')->group(function () {
+                Route::get('/', [SaleReturnController::class, 'create'])->name('create');
+                Route::post('/', [SaleReturnController::class, 'store'])->name('store');
+            });
+
+            Route::get('sale-items-for-shipment/{sale}', [ShipmentController::class, 'saleItems'])->name('sale-items-for-shipment');
+
+            Route::prefix('shipments')->name('owner.shipments.')->group(function () {
+                Route::get('/', [ShipmentController::class, 'index'])->name('index');
+                Route::get('/create', [ShipmentController::class, 'create'])->name('create');
+                Route::post('/', [ShipmentController::class, 'store'])->name('store');
+                Route::get('{shipment}', [ShipmentController::class, 'show'])->name('show');
+                Route::post('{shipment}/update-status', [ShipmentController::class, 'updateStatus'])->name('update-status');
+            });
         });
+
+
     });

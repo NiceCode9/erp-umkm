@@ -109,5 +109,39 @@
             </div>
         </x-card>
     @endif
+
+    @if(isset($outstandingPurchases) && $outstandingPurchases->count())
+        <x-card class="mt-6 border-warning/30">
+            <h2 class="text-lg font-semibold text-warning mb-3">Utang ke Supplier (Belum Lunas)</h2>
+            <div class="space-y-2">
+                @foreach($outstandingPurchases->take(5) as $p)
+                    <div class="flex justify-between items-center text-sm p-2 bg-warning/5 rounded-[var(--radius)]">
+                        <span class="font-medium text-foreground">{{ $p->supplier->name ?? '-' }} — {{ $p->invoice_no }}</span>
+                        <span class="text-warning font-semibold">{{ format_currency($p->outstanding) }}</span>
+                    </div>
+                @endforeach
+                @if($outstandingPurchases->count() > 5)
+                    <p class="text-xs text-muted-foreground text-center">+ {{ $outstandingPurchases->count() - 5 }} lainnya</p>
+                @endif
+            </div>
+        </x-card>
+    @endif
+
+    @if(isset($outstandingSales) && $outstandingSales->count())
+        <x-card class="mt-6 border-destructive/30">
+            <h2 class="text-lg font-semibold text-destructive mb-3">Piutang dari Pembeli (Belum Lunas)</h2>
+            <div class="space-y-2">
+                @foreach($outstandingSales->take(5) as $s)
+                    <div class="flex justify-between items-center text-sm p-2 bg-destructive/5 rounded-[var(--radius)]">
+                        <span class="font-medium text-foreground">{{ $s->customer_name ?? '-' }} — {{ $s->invoice_no }}</span>
+                        <span class="text-destructive font-semibold">{{ format_currency($s->outstanding) }}</span>
+                    </div>
+                @endforeach
+                @if($outstandingSales->count() > 5)
+                    <p class="text-xs text-muted-foreground text-center">+ {{ $outstandingSales->count() - 5 }} lainnya</p>
+                @endif
+            </div>
+        </x-card>
+    @endif
 </div>
 @endsection
