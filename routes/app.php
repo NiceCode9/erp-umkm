@@ -138,7 +138,14 @@ Route::prefix('app')
             Route::post('{stock_distribution}/ship', [\App\Http\Controllers\App\Owner\StockDistributionController::class, 'ship'])->name('ship');
             Route::post('{stock_distribution}/receive', [\App\Http\Controllers\App\Owner\StockDistributionController::class, 'receive'])->name('receive');
         });
+
+        Route::prefix('stock-opnames')->name('stock-opnames.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\App\Owner\StockOpnameController::class, 'index'])->name('index');
+            Route::get('/create', [\App\Http\Controllers\App\Owner\StockOpnameController::class, 'create'])->name('create');
+            Route::post('/', [\App\Http\Controllers\App\Owner\StockOpnameController::class, 'store'])->name('store');
+            Route::get('batches', [\App\Http\Controllers\App\Owner\StockOpnameController::class, 'getBatches'])->name('batches');
         });
 
+        }); // end role:Owner
 
-    });
+    }); // end app prefix

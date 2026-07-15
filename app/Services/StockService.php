@@ -7,6 +7,7 @@ use App\Models\ProductionConsumption;
 use App\Models\RawMaterial;
 use App\Models\RawMaterialBatch;
 use App\Models\StockMovement;
+use App\Models\StockOpname;
 use App\Models\SaleItem;
 use App\Models\SaleItemBatch;
 use App\Models\Sale;
@@ -310,6 +311,59 @@ class StockService
 
         return $prefix . str_pad((string) $seq, 4, '0', STR_PAD_LEFT);
     }
+
+    /**
+     * Adjust stock from opname. Checks item_type to resolve batch correctly.
+     */
+    public function adjustStockFromOpname(
+        int $branchId, int $businessId,
+        string $itemType, int $itemId, int $batchId,
+        float $systemQty, float $actualQty,
+        string $reason, int $userId,
+    ): StockOpname {
+        return DB::transaction(function () use (
+            $branchId, $businessId, $itemType, $itemId, $batchId,
+            $systemQty, $actualQty, $reason, $userId
+        ) {
+            $diff = $actualQty - $systemQty;
+
+            if ($itemType === 'raw_material') {
+                RawMaterialBatch::where('id', $batchId)->update(['quantity_remaining' => $actualQty]);
+            } else {
+                ProductBatch::where('id', $batchId)->update(['quantity_remaining' => $actualQty]);
+            }
+
+            if ($diff != 0) {
+                StockMovement::create([
+                    'business_id' => $businessId,
+                    'branch_id' => $branchId,
+                    'item_type' => $itemType,
+                    'item_id' => $itemId,
+                    'batch_id' => $batchId,
+                    'batch_type' => $itemType,
+                    'movement_type' => $diff > 0 ? 'in' : 'out',
+                    'quantity' => abs($diff),
+                    'reference_type' => 'stock_opname',
+                    'reference_id' => 0,
+                    'created_by' => $userId,
+                ]);
+            }
+
+            return StockOpname::create([
+                'business_id' => $businessId,
+                'branch_id' => $branchId,
+                'item_type' => $itemType,
+                'item_id' => $itemId,
+                'batch_id' => $batchId,
+                'system_quantity' => $systemQty,
+                'actual_quantity' => $actualQty,
+                'difference' => $diff,
+                'reason' => $reason,
+                'user_id' => $userId,
+            ]);
+        });
+    }
+}
 
     /**
      * Generate invoice number: INV-YYYYMMDD-XXXX (sequential per day).
