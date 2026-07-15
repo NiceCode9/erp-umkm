@@ -32,7 +32,7 @@
                 @foreach($stock_distribution->items as $item)
                     <tr class="border-b border-border/50">
                         <td class="py-2"><x-badge variant="{{ $item->item_type === 'raw_material' ? 'default' : 'info' }}">{{ $item->item_type === 'raw_material' ? 'Bahan Baku' : 'Produk' }}</x-badge></td>
-                        <td class="py-2">{{ $item->rawMaterial?->name ?? $item->product?->name ?? '-' }}</td>
+                        <td class="py-2">{{ $item->item_name }}</td>
                         <td class="py-2 text-right font-medium">{{ format_number($item->quantity) }}</td>
                     </tr>
                 @endforeach
@@ -49,21 +49,9 @@
                     @foreach($stock_distribution->items as $item)
                         @foreach($item->batchRecords as $br)
                             <tr class="border-b border-border/50">
-                                <td class="py-2">{{ $item->rawMaterial?->name ?? $item->product?->name ?? '-' }}</td>
-                                <td class="py-2 text-center text-xs">
-                                    @if($item->item_type === 'raw_material')
-                                        {{ $br->rawMaterialBatch?->batch_no ?? '-' }}
-                                    @else
-                                        {{ $br->productBatch?->batch_no ?? '-' }}
-                                    @endif
-                                </td>
-                                <td class="py-2 text-center text-xs">
-                                    @if($item->item_type === 'raw_material')
-                                        {{ $br->rawMaterialBatch?->expired_date?->format('d/m/Y') ?? '-' }}
-                                    @else
-                                        {{ $br->productBatch?->expired_date?->format('d/m/Y') ?? '-' }}
-                                    @endif
-                                </td>
+                                <td class="py-2">{{ $item->item_name }}</td>
+                                <td class="py-2 text-center text-xs">{{ $br->batch_name }}</td>
+                                <td class="py-2 text-center text-xs">{{ $br->batch_expired ?? '-' }}</td>
                                 <td class="py-2 text-right">{{ format_number($br->quantity) }}</td>
                             </tr>
                         @endforeach

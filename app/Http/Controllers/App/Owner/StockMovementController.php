@@ -48,15 +48,6 @@ class StockMovementController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        $movements->load('batch.rawMaterial');
-        $movements->each(function ($m) {
-            if ($m->item_type === 'raw_material') {
-                $m->item_name = optional(optional($m->batch)->rawMaterial)->name ?? "Raw Material #{$m->item_id}";
-            } else {
-                $m->item_name = "Product #{$m->item_id}";
-            }
-        });
-
         return view('app.owner.stock-movements.index', compact('movements', 'branches'));
     }
 }

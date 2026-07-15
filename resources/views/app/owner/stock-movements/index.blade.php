@@ -77,7 +77,7 @@
                     <tr class="hover:bg-muted/50">
                         <td class="px-4 py-3 whitespace-nowrap">{{ $m->created_at->format('d M Y H:i') }}</td>
                         <td class="px-4 py-3">{{ $m->branch->name }}</td>
-                        <td class="px-4 py-3">{{ $m->item_name ?? ($m->item_type == 'raw_material' ? 'RM #'.$m->item_id : 'Prod #'.$m->item_id) }}</td>
+                        <td class="px-4 py-3">{{ $m->item_name }}</td>
                         <td class="px-4 py-3 text-center text-xs">
                             {{ $m->item_type == 'raw_material' ? 'Bahan Baku' : 'Produk' }}
                         </td>

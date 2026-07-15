@@ -74,6 +74,15 @@ Project ini memiliki **dua area route terpisah** berdasarkan role (untuk kejelas
 - Gunakan Service/Action class untuk logika bisnis kompleks (misalnya kalkulasi BOM produksi, FEFO, kalkulasi diskon+tax) — jangan taruh logika ini langsung di controller.
 - Setiap perubahan stok (bahan baku maupun produk jadi) WAJIB melalui satu service terpusat (misal `StockService`) agar histori pergerakan stok konsisten dan bisa diaudit — dilarang mengubah kolom stok langsung dari controller manapun.
 
+### 5.1 ATURAN WAJIB: Penanganan Kolom Polymorphic Manual (`*_type` + `*_id`)
+
+Beberapa tabel pakai pola polymorphic MANUAL (bukan `morphTo()` bawaan Laravel): `stock_movements` (`item_type`+`item_id`, `batch_id` merujuk tabel berbeda tergantung `item_type`), `stock_distribution_items` (`item_type`+`item_id`), `stock_distribution_item_batches` (`batch_type`+`batch_id`). Pola ini RAWAN BUG karena `item_id`/`batch_id` cuma angka biasa — `item_id = 1` bisa kebetulan cocok ke BEBERAPA tabel berbeda (mis. `products.id = 1` DAN `raw_materials.id = 1` sama-sama ada).
+
+**WAJIB diikuti setiap kali resolve data dari kolom ini:**
+- SELALU cek `*_type` DULU sebelum query ke tabel manapun — jangan pernah `Product::find($item_id)` langsung tanpa cek `item_type === 'product'` dulu.
+- Buat SATU accessor/method terpusat per model (mis. `getItemAttribute()` di `StockMovement`, `getBatchAttribute()` di `StockDistributionItemBatch`) yang melakukan branching berdasarkan `*_type` dan me-return model yang benar (`Product` atau `RawMaterial`, `ProductBatch` atau `RawMaterialBatch`). SEMUA tempat yang butuh resolve data ini (list, detail, riwayat, laporan) WAJIB pakai accessor ini — JANGAN tulis ulang logic branching `if item_type === ...` di banyak tempat berbeda, itu yang menyebabkan bug seperti ini (satu tempat benar, tempat lain lupa di-cek).
+- Test wajib: buat data dengan `item_id`/`batch_id` yang SAMA ANGKANYA tapi `item_type`/`batch_type` BERBEDA (persis skenario `products.id=1` vs `raw_materials.id=1`) — pastikan hasilnya benar-benar berbeda sesuai type-nya, bukan tertukar.
+
 ## 6. Snapshot Data Transaksi
 
 - Nilai diskon, tax, dan harga pada transaksi penjualan WAJIB disimpan sebagai **snapshot** di tabel transaksi (bukan hanya referensi ke tabel setting/produk), agar riwayat transaksi lama tidak berubah jika setting/harga diubah di kemudian hari.
@@ -109,10 +118,8 @@ Selalu rujuk balik ke:
 Perbarui bagian ini setiap kali ada keputusan arsitektur baru yang disepakati selama sesi vibecoding.
 
 | Tanggal | Perubahan |
-|---|---|---|
+|---|---|
 | - | Versi awal dibuat berdasarkan hasil diskusi PRD |
 | - | Perubahan besar: seluruh area (Superadmin, Owner, Kasir) memakai Blade + Tailwind CSS (AdminLTE 4 dihapus); PWA dihapus total (tidak ada manifest/service worker); autentikasi memakai Laravel Breeze stack Blade |
-| - | Bug fix kritis: model User TIDAK BOLEH pakai Global Scope generik BelongsToBusiness (menyebabkan infinite recursion/crash setelah login) — lihat bagian 2.1 |
 | - | Keputusan: Register publik dihapus (tenant hanya dibuat oleh Superadmin); satu controller auth (AuthenticatedSessionController diperluas, LoginController custom dihapus); font pakai system stack (Figtree dihapus) |
 | - | Bug fix kritis: model User TIDAK BOLEH pakai Global Scope generik BelongsToBusiness (menyebabkan infinite recursion/crash setelah login) — lihat bagian 2.1 |
-| 11 Jul 2026 | Fase 5 (Penjualan Kasir & Shift) selesai: migrations sales, sale_items, sale_payments, cashier_shifts, sale_returns; EnsureShiftIsOpen middleware; POS page (grid produk+search+cart tetap); FEFO produk jadi via StockService.consumeProductStockForSale(); struk print-friendly; riwayat penjualan Kasir (milik sendiri) & Owner (semua cabang). |

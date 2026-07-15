@@ -10,7 +10,7 @@ class StockMovement extends Model
 {
     use BelongsToBusiness;
 
-    protected $appends = ['reference_label'];
+    protected $appends = ['reference_label', 'item_name'];
 
     public function getReferenceLabelAttribute(): string
     {
@@ -65,4 +65,16 @@ class StockMovement extends Model
         return $this->belongsTo(RawMaterialBatch::class, 'batch_id');
     }
 
+    public function getItemNameAttribute(): string
+    {
+        if ($this->item_type === 'raw_material') {
+            $rm = \App\Models\RawMaterial::find($this->item_id);
+            return $rm?->name ?? "Bahan Baku #{$this->item_id}";
+        }
+        if ($this->item_type === 'product') {
+            $p = \App\Models\Product::find($this->item_id);
+            return $p?->name ?? "Produk #{$this->item_id}";
+        }
+        return "Item #{$this->item_id}";
+    }
 }

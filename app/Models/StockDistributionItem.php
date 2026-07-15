@@ -19,6 +19,8 @@ class StockDistributionItem extends Model
         'quantity' => 'decimal:2',
     ];
 
+    protected $appends = ['item_name'];
+
     public function distribution(): BelongsTo
     {
         return $this->belongsTo(StockDistribution::class, 'stock_distribution_id');
@@ -37,5 +39,16 @@ class StockDistributionItem extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class, 'item_id');
+    }
+
+    public function getItemNameAttribute(): string
+    {
+        if ($this->item_type === 'raw_material') {
+            return $this->rawMaterial?->name ?? "Bahan Baku #{$this->item_id}";
+        }
+        if ($this->item_type === 'product') {
+            return $this->product?->name ?? "Produk #{$this->item_id}";
+        }
+        return "Item #{$this->item_id}";
     }
 }
