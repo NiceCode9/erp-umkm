@@ -57,9 +57,6 @@
                         <li class="pt-2 mt-2 border-t border-border"><a href="{{ route('app.owner.sales.index') }}"
                                 class="flex items-center px-4 py-2 rounded-[var(--radius)] text-sm {{ request()->routeIs('app.owner.sales.*') ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted' }}">Penjualan</a>
                         </li>
-                        <li><a href="{{ route('app.owner.shifts.index') }}"
-                                class="flex items-center px-4 py-2 rounded-[var(--radius)] text-sm {{ request()->routeIs('app.owner.shifts.*') ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted' }}">Rekap Shift</a>
-                        </li>
                         <li><a href="{{ route('app.owner.receivables.index') }}"
                                 class="flex items-center px-4 py-2 rounded-[var(--radius)] text-sm {{ request()->routeIs('app.owner.receivables.*') ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted' }}">Piutang</a>
                         </li>
@@ -71,6 +68,22 @@
                         </li>
                         <li><a href="{{ route('app.stock-opnames.index') }}"
                                 class="flex items-center px-4 py-2 rounded-[var(--radius)] text-sm {{ request()->routeIs('app.stock-opnames.*') ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted' }}">Stok Opname</a>
+                        </li>
+                        <li class="pt-2 mt-2 border-t border-border text-xs font-semibold text-muted-foreground uppercase tracking-wider px-4 pt-3 pb-1">Laporan</li>
+                        <li><a href="{{ route('app.owner.reports.sales') }}"
+                                class="flex items-center px-4 py-2 rounded-[var(--radius)] text-sm {{ request()->routeIs('app.owner.reports.sales') ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted' }}">Laporan Penjualan</a>
+                        </li>
+                        <li><a href="{{ route('app.owner.reports.debts') }}"
+                                class="flex items-center px-4 py-2 rounded-[var(--radius)] text-sm {{ request()->routeIs('app.owner.reports.debts') ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted' }}">Utang Piutang</a>
+                        </li>
+                        <li><a href="{{ route('app.owner.reports.stock') }}"
+                                class="flex items-center px-4 py-2 rounded-[var(--radius)] text-sm {{ request()->routeIs('app.owner.reports.stock') ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted' }}">Laporan Stok</a>
+                        </li>
+                        <li><a href="{{ route('app.owner.reports.production') }}"
+                                class="flex items-center px-4 py-2 rounded-[var(--radius)] text-sm {{ request()->routeIs('app.owner.reports.production') ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted' }}">Laporan Produksi</a>
+                        </li>
+                        <li><a href="{{ route('app.owner.reports.shifts') }}"
+                                class="flex items-center px-4 py-2 rounded-[var(--radius)] text-sm {{ request()->routeIs('app.owner.reports.shifts') ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted' }}">Rekap Shift</a>
                         </li>
                         @elserole('Kasir')
                         <li><a href="{{ route('app.dashboard') }}"

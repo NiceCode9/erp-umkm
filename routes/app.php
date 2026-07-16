@@ -105,10 +105,6 @@ Route::prefix('app')
                 Route::get('{sale}', [OwnerSaleController::class, 'show'])->name('show');
             });
 
-            Route::prefix('shifts')->name('owner.shifts.')->group(function () {
-                Route::get('/', [ShiftController::class, 'index'])->name('index');
-            });
-
             Route::prefix('receivables')->name('owner.receivables.')->group(function () {
                 Route::get('/', [ReceivableController::class, 'index'])->name('index');
                 Route::get('{sale}/pay', [ReceivableController::class, 'payForm'])->name('pay');
@@ -146,6 +142,15 @@ Route::prefix('app')
             Route::get('/worksheet/{session}', [\App\Http\Controllers\App\Owner\StockOpnameController::class, 'worksheet'])->name('worksheet');
             Route::post('/worksheet/{session}/save', [\App\Http\Controllers\App\Owner\StockOpnameController::class, 'saveWorksheet'])->name('worksheet.save');
             Route::post('/worksheet/{session}/confirm', [\App\Http\Controllers\App\Owner\StockOpnameController::class, 'confirm'])->name('confirm');
+        });
+
+        Route::prefix('reports')->name('owner.reports.')->group(function () {
+            Route::get('sales', [\App\Http\Controllers\App\Owner\ReportController::class, 'sales'])->name('sales');
+            Route::get('shifts', [\App\Http\Controllers\App\Owner\ReportController::class, 'shifts'])->name('shifts');
+            Route::get('debts', [\App\Http\Controllers\App\Owner\ReportController::class, 'debts'])->name('debts');
+            Route::get('stock', [\App\Http\Controllers\App\Owner\ReportController::class, 'stock'])->name('stock');
+            Route::get('production', [\App\Http\Controllers\App\Owner\ReportController::class, 'production'])->name('production');
+            Route::get('{type}/export/{format}', [\App\Http\Controllers\App\Owner\ReportController::class, 'export'])->name('export');
         });
 
         }); // end role:Owner
