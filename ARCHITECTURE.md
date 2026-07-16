@@ -34,6 +34,14 @@ Aplikasi berjalan sebagai satu project Laravel 13 dengan **dua area route terpis
   - `EnsureBusinessIsActive` — cek `business.is_active`, hanya berlaku di grup route `/app/*`.
   - `EnsureBranchAccess` — untuk Kasir, pastikan resource yang diakses (mis. `sale_id`) memang milik `branch_id` miliknya.
 
+### 2.1 Business Context untuk Aksi Superadmin (Kelola Cabang/User Tenant)
+
+Karena Superadmin sendiri `business_id = null` (tidak terikat satu tenant), setiap kali Superadmin melakukan aksi yang scoped ke satu business tertentu (tambah cabang, tambah Owner/Kasir untuk business tersebut — lihat `PRD.md` bagian 5), dia WAJIB memilih dulu **business context eksplisit**:
+
+- Route-nya berbentuk nested di bawah business tertentu, mis. `/superadmin/businesses/{business}/branches/create`, `/superadmin/businesses/{business}/users/create` — `{business}` adalah parameter route eksplisit, BUKAN diambil dari `auth()->user()->business_id` (yang selalu null untuk Superadmin).
+- Saat record baru dibuat lewat rute ini, `business_id` diisi dari parameter route `{business}` tersebut (bukan dari user yang login), lalu di-assign secara eksplisit ke record baru — TETAP TIDAK BOLEH diinput bebas dari form (mencegah Superadmin salah pilih/salah ketik business_id sembarangan; harus melalui pemilihan business yang valid via route/dropdown, bukan text input manual).
+- Ini konsisten dengan prinsip di bagian 2: `business_id` tidak pernah diinput manual dari form biasa, tapi ditentukan dari konteks (user yang login untuk Owner/Kasir, atau parameter route eksplisit untuk aksi Superadmin).
+
 ## 3. Struktur Area & Routing
 
 ```

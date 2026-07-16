@@ -54,7 +54,12 @@ Detail matrix permission akan dijabarkan lengkap di `PERMISSIONS.md`.
 
 - Superadmin dapat melihat daftar seluruh business (UMKM) yang terdaftar.
 - **Pendaftaran tenant tertutup (bukan self-service):** tidak ada halaman Register publik untuk UMKM baru mendaftar sendiri. Satu-satunya cara business baru masuk ke sistem adalah **Superadmin membuat business tersebut secara manual**, sekaligus membuat akun Owner awal (email & password) dalam satu alur form yang sama.
-- Halaman Register bawaan Laravel Breeze **dinonaktifkan/dihapus** — tidak diakses publik. Pembuatan akun setelah itu hanya terjadi via: Superadmin membuat Owner baru (saat membuat business), dan Owner membuat akun Kasir (sesuai `PERMISSIONS.md`).
+- Halaman Register bawaan Laravel Breeze **dinonaktifkan/dihapus** — tidak diakses publik. Pembuatan akun setelah itu hanya terjadi via: Superadmin membuat Owner baru (saat membuat business, atau menambah Owner tambahan belakangan), dan Owner ATAU Superadmin membuat akun Kasir (sesuai `PERMISSIONS.md`).
+- **Kelola penuh tiap tenant (bukan cuma saat pembuatan awal):** dari panel Superadmin, saat melihat detail satu business, Superadmin dapat:
+  - Menambah/mengelola **cabang** untuk business tersebut (sama seperti yang bisa dilakukan Owner untuk cabangnya sendiri).
+  - Menambah **akun Owner tambahan** untuk business tersebut (kalau Owner awal butuh dibantu tambah rekan pemilik lain).
+  - Menambah **akun Kasir** untuk business tersebut (assign ke cabang tertentu), sama seperti yang bisa dilakukan Owner.
+  - Ini untuk keperluan support/onboarding SaaS — Owner tidak wajib mengerjakan semua setup sendirian, Superadmin dapat membantu langsung dari panel manajemen tenant.
 - Superadmin dapat **mengaktifkan/menonaktifkan** sebuah business.
 - Jika business dinonaktifkan (`is_active = false`):
   - Seluruh user (Owner & Kasir) yang terikat pada business tersebut **tidak dapat mengakses aplikasi** (di-redirect ke halaman informasi akun nonaktif).

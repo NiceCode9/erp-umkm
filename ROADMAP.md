@@ -16,6 +16,7 @@ Urutan ini dirancang agar setiap fase menghasilkan sistem yang bisa langsung dit
 ## Fase 1 - Superadmin & Manajemen Tenant
 
 - CRUD business (tenant) oleh Superadmin — **form Create Business menyertakan pembuatan akun Owner awal sekaligus** (nama, email, password Owner), sesuai keputusan Register tertutup di `AGENTS.md` bagian 3.1. Satu form, satu submit, langsung menghasilkan business + user Owner pertama yang terhubung ke business tersebut.
+- **Kelola penuh tiap tenant dari panel Superadmin** (ditambahkan belakangan, lihat `PRD.md` bagian 5 dan `ARCHITECTURE.md` bagian 2.1): dari halaman detail business, Superadmin dapat menambah cabang, menambah Owner tambahan, dan menambah akun Kasir untuk business tersebut — pakai business context eksplisit via route nested (`/superadmin/businesses/{business}/...`), BUKAN scope otomatis dari user login.
 - Aktifkan/nonaktifkan business + efeknya ke akses user terkait.
 - Dashboard Superadmin sederhana (jumlah tenant, status aktif/nonaktif).
 - Activity log untuk aksi aktivasi/nonaktivasi, dan untuk pembuatan business baru.

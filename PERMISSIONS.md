@@ -17,10 +17,11 @@ Dikelola menggunakan `spatie/laravel-permission`. Tiga role utama: **Superadmin*
 | Lihat daftar business | ✅ | ❌ | ❌ |
 | Aktifkan/nonaktifkan business | ✅ | ❌ | ❌ |
 | **Manajemen Cabang** | | | |
-| Tambah/ubah/nonaktifkan cabang | ❌ | ✅ | ❌ |
+| Tambah/ubah/nonaktifkan cabang | ✅ (untuk business manapun, dari panel Superadmin) | ✅ (cabang miliknya sendiri) | ❌ |
 | Lihat data cabang sendiri | ❌ | ✅ (semua cabang miliknya) | ✅ (cabang sendiri saja) |
 | **Manajemen User** | | | |
-| Buat/ubah akun Kasir | ❌ | ✅ | ❌ |
+| Buat/ubah akun Owner tambahan untuk suatu business | ✅ | ❌ | ❌ |
+| Buat/ubah akun Kasir | ✅ (untuk business manapun, dari panel Superadmin) | ✅ (Kasir miliknya sendiri) | ❌ |
 | Ubah profil sendiri | ❌ | ✅ | ✅ |
 | **Bahan Baku & Stok** | | | |
 | Tambah/ubah master bahan baku | ❌ | ✅ | ❌ |
@@ -72,6 +73,7 @@ Dikelola menggunakan `spatie/laravel-permission`. Tiga role utama: **Superadmin*
 - Kasir **boleh** menerima dan mencatat pembayaran cicilan piutang pelanggan, terbatas pada transaksi di cabangnya sendiri.
 - **Tidak ada self-registration.** Akun hanya dibuat melalui: Superadmin membuat business + akun Owner awal sekaligus; Owner membuat akun Kasir. Tidak ada role yang bisa mendaftar sendiri lewat halaman publik (lihat `AGENTS.md` bagian 3.1).
 - **Kasir boleh input pengiriman** untuk transaksi penjualan miliknya sendiri di cabangnya (bukan cuma Owner) — lihat `BUSINESS-RULES.md` bagian 7 untuk alur lengkapnya. Kasir TIDAK bisa melihat/kelola pengiriman lintas cabang atau kasir lain.
+- **Superadmin punya kemampuan kelola penuh tiap tenant (bukan cuma bikin business+Owner sekali di awal)** — dari panel Superadmin, Superadmin dapat: menambah cabang untuk business manapun, menambah akun Owner tambahan untuk business manapun (kalau perlu lebih dari satu Owner), dan membuat akun Kasir untuk business manapun. Ini untuk keperluan support/onboarding SaaS sederhana (Owner tidak harus mengerjakan semua setup sendirian, Superadmin bisa bantu). Saat Superadmin melakukan aksi ini, dia WAJIB memilih dulu business mana yang sedang dikelola (business context eksplisit, karena Superadmin sendiri tidak terikat `business_id`) — lihat `ARCHITECTURE.md` bagian 3 untuk detail teknis.
 
 ## 4. Implementasi Teknis (Referensi untuk AGENTS.md)
 

@@ -39,6 +39,9 @@
                         <td class="px-4 py-3 text-muted-foreground">{{ $business->created_at->format('d M Y') }}</td>
                         <td class="px-4 py-3">
                             <div class="flex items-center gap-2">
+                                <a href="{{ route('superadmin.businesses.show', $business) }}">
+                                    <x-button size="sm">Detail</x-button>
+                                </a>
                                 <a href="{{ route('superadmin.businesses.edit', $business) }}">
                                     <x-button variant="secondary" size="sm">Edit</x-button>
                                 </a>
