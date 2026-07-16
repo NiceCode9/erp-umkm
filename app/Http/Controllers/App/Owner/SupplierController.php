@@ -38,11 +38,13 @@ class SupplierController extends Controller
 
     public function edit(Supplier $supplier): View
     {
+        if ($supplier->business_id !== auth()->user()->business_id) abort(403);
         return view('app.owner.suppliers.edit', compact('supplier'));
     }
 
     public function update(Request $request, Supplier $supplier): RedirectResponse
     {
+        if ($supplier->business_id !== auth()->user()->business_id) abort(403);
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'phone' => 'required|string|max:255',
@@ -58,6 +60,7 @@ class SupplierController extends Controller
 
     public function destroy(Supplier $supplier): RedirectResponse
     {
+        if ($supplier->business_id !== auth()->user()->business_id) abort(403);
         $supplier->delete();
         return redirect()
             ->route('app.suppliers.index')

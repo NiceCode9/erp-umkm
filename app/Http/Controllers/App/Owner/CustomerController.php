@@ -38,11 +38,13 @@ class CustomerController extends Controller
 
     public function edit(Customer $customer): View
     {
+        if ($customer->business_id !== auth()->user()->business_id) abort(403);
         return view('app.owner.customers.edit', compact('customer'));
     }
 
     public function update(Request $request, Customer $customer): RedirectResponse
     {
+        if ($customer->business_id !== auth()->user()->business_id) abort(403);
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'phone' => 'required|string|max:255',
@@ -58,6 +60,7 @@ class CustomerController extends Controller
 
     public function destroy(Customer $customer): RedirectResponse
     {
+        if ($customer->business_id !== auth()->user()->business_id) abort(403);
         $customer->delete();
         return redirect()
             ->route('app.customers.index')

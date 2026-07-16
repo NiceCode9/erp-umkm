@@ -120,12 +120,14 @@ class ProductController extends Controller
 
     public function edit(Product $product): View
     {
+        if ($product->business_id !== auth()->user()->business_id) abort(403);
         $product->load('units');
         return view('app.owner.products.edit', compact('product'));
     }
 
     public function update(Request $request, Product $product): RedirectResponse
     {
+        if ($product->business_id !== auth()->user()->business_id) abort(403);
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'sku' => 'nullable|string|max:100',
@@ -188,6 +190,7 @@ class ProductController extends Controller
 
     public function destroy(Product $product): RedirectResponse
     {
+        if ($product->business_id !== auth()->user()->business_id) abort(403);
         $product->delete();
         return redirect()
             ->route('app.products.index')
