@@ -363,7 +363,6 @@ class StockService
             ]);
         });
     }
-}
 
     /**
      * Generate invoice number: INV-YYYYMMDD-XXXX (sequential per day).

@@ -142,8 +142,10 @@ Route::prefix('app')
         Route::prefix('stock-opnames')->name('stock-opnames.')->group(function () {
             Route::get('/', [\App\Http\Controllers\App\Owner\StockOpnameController::class, 'index'])->name('index');
             Route::get('/create', [\App\Http\Controllers\App\Owner\StockOpnameController::class, 'create'])->name('create');
-            Route::post('/', [\App\Http\Controllers\App\Owner\StockOpnameController::class, 'store'])->name('store');
-            Route::get('batches', [\App\Http\Controllers\App\Owner\StockOpnameController::class, 'getBatches'])->name('batches');
+            Route::post('/session', [\App\Http\Controllers\App\Owner\StockOpnameController::class, 'storeSession'])->name('session.store');
+            Route::get('/worksheet/{session}', [\App\Http\Controllers\App\Owner\StockOpnameController::class, 'worksheet'])->name('worksheet');
+            Route::post('/worksheet/{session}/save', [\App\Http\Controllers\App\Owner\StockOpnameController::class, 'saveWorksheet'])->name('worksheet.save');
+            Route::post('/worksheet/{session}/confirm', [\App\Http\Controllers\App\Owner\StockOpnameController::class, 'confirm'])->name('confirm');
         });
 
         }); // end role:Owner

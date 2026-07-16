@@ -66,8 +66,11 @@
                         <li><a href="{{ route('app.owner.shipments.index') }}"
                                 class="flex items-center px-4 py-2 rounded-[var(--radius)] text-sm {{ request()->routeIs('app.owner.shipments.*') ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted' }}">Pengiriman</a>
                         </li>
-                        <li><a href="{{ route('app.owner.stock-distributions.index') }}"
+                         <li><a href="{{ route('app.owner.stock-distributions.index') }}"
                                 class="flex items-center px-4 py-2 rounded-[var(--radius)] text-sm {{ request()->routeIs('app.owner.stock-distributions.*') ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted' }}">Distribusi Stok</a>
+                        </li>
+                        <li><a href="{{ route('app.stock-opnames.index') }}"
+                                class="flex items-center px-4 py-2 rounded-[var(--radius)] text-sm {{ request()->routeIs('app.stock-opnames.*') ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted' }}">Stok Opname</a>
                         </li>
                         @elserole('Kasir')
                         <li><a href="{{ route('app.dashboard') }}"

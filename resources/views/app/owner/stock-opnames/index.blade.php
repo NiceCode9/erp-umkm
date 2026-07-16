@@ -1,43 +1,44 @@
 @extends('app.layouts.app')
-@section('title', 'Riwayat Stok Opname')
+@section('title', 'Stok Opname')
 @section('content')
 <x-card>
     <div class="flex justify-between items-center mb-4">
-        <h2 class="text-lg font-semibold">Riwayat Stok Opname</h2>
-        <a href="{{ route('app.stock-opnames.create') }}"><x-button>Stok Opname Baru</x-button></a>
+        <h2 class="text-lg font-semibold">Sesi Stok Opname</h2>
+        <a href="{{ route('app.stock-opnames.create') }}"><x-button>Buat Sesi Baru</x-button></a>
     </div>
     <div class="overflow-x-auto">
         <table class="w-full text-sm">
             <thead><tr class="bg-muted border-b border-border">
                 <th class="px-4 py-3 text-left font-semibold text-muted-foreground">Tanggal</th>
+                <th class="px-4 py-3 text-left font-semibold text-muted-foreground">Judul</th>
                 <th class="px-4 py-3 text-left font-semibold text-muted-foreground">Cabang</th>
-                <th class="px-4 py-3 text-left font-semibold text-muted-foreground">Item</th>
-                <th class="px-4 py-3 text-left font-semibold text-muted-foreground">Batch</th>
-                <th class="px-4 py-3 text-right font-semibold text-muted-foreground">Sistem</th>
-                <th class="px-4 py-3 text-right font-semibold text-muted-foreground">Aktual</th>
-                <th class="px-4 py-3 text-right font-semibold text-muted-foreground">Selisih</th>
-                <th class="px-4 py-3 text-left font-semibold text-muted-foreground">Alasan</th>
+                <th class="px-4 py-3 text-left font-semibold text-muted-foreground">Tipe</th>
+                <th class="px-4 py-3 text-center font-semibold text-muted-foreground">Status</th>
+                <th class="px-4 py-3 text-left font-semibold text-muted-foreground">Oleh</th>
+                <th class="px-4 py-3 text-left font-semibold text-muted-foreground">Aksi</th>
             </tr></thead>
             <tbody class="divide-y divide-border">
-                @forelse($opnames as $o)
+                @forelse($sessions as $s)
                     <tr class="hover:bg-muted/50">
-                        <td class="px-4 py-3 whitespace-nowrap">{{ $o->created_at->format('d M Y H:i') }}</td>
-                        <td class="px-4 py-3">{{ $o->branch->name }}</td>
-                        <td class="px-4 py-3">{{ $o->item_name }}</td>
-                        <td class="px-4 py-3 text-xs">{{ $o->batch_label }}</td>
-                        <td class="px-4 py-3 text-right">{{ format_number($o->system_quantity) }}</td>
-                        <td class="px-4 py-3 text-right">{{ format_number($o->actual_quantity) }}</td>
-                        <td class="px-4 py-3 text-right font-semibold {{ $o->difference >= 0 ? 'text-primary' : 'text-destructive' }}">
-                            {{ $o->difference >= 0 ? '+' : '' }}{{ format_number($o->difference) }}
+                        <td class="px-4 py-3 whitespace-nowrap">{{ $s->opname_date->format('d M Y') }}</td>
+                        <td class="px-4 py-3 font-medium">{{ $s->title ?? 'Sesi #'.$s->id }}</td>
+                        <td class="px-4 py-3">{{ $s->branch->name }}</td>
+                        <td class="px-4 py-3">{{ $s->item_type === 'raw_material' ? 'Bahan Baku' : 'Produk' }}</td>
+                        <td class="px-4 py-3 text-center">
+                            @if($s->status === 'draft')<x-badge variant="warning">Draft</x-badge>
+                            @else<x-badge variant="success">Confirmed</x-badge>@endif
                         </td>
-                        <td class="px-4 py-3 text-xs text-muted-foreground">{{ $o->reason }}</td>
+                        <td class="px-4 py-3">{{ $s->user->name }}</td>
+                        <td class="px-4 py-3">
+                            <a href="{{ route('app.stock-opnames.worksheet', $s) }}"><x-button variant="secondary" size="sm">Buka</x-button></a>
+                        </td>
                     </tr>
                 @empty
-                    <tr><td colspan="8" class="px-4 py-8 text-center text-muted-foreground">Belum ada opname.</td></tr>
+                    <tr><td colspan="7" class="px-4 py-8 text-center text-muted-foreground">Belum ada sesi opname.</td></tr>
                 @endforelse
             </tbody>
         </table>
     </div>
-    @if ($opnames->hasPages())<div class="mt-4">{{ $opnames->links() }}</div>@endif
+    @if ($sessions->hasPages())<div class="mt-4">{{ $sessions->links() }}</div>@endif
 </x-card>
 @endsection

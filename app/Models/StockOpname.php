@@ -11,6 +11,7 @@ class StockOpname extends Model
     use BelongsToBusiness;
 
     protected $fillable = [
+        'session_id',
         'business_id', 'branch_id',
         'item_type', 'item_id', 'batch_id',
         'system_quantity', 'actual_quantity', 'difference',
