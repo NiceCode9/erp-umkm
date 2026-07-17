@@ -1,3 +1,8 @@
+/* Font untuk welcome.blade.php (landing page) — import tidak memaksa font ini
+   dipakai di halaman lain, hanya membuatnya tersedia. Penerapannya di-scope
+   lewat class .landing-page di bawah. */
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -28,5 +33,111 @@
         --border: #E5E5E5;
         --input: #E5E5E5;
         --ring: #58CC02;
+    }
+}
+
+/* =========================================================================
+   Landing page (welcome.blade.php) — SEMUA rule di bawah ini di-scope
+   di dalam ".landing-page" (class pada <body> welcome.blade.php), jadi
+   tidak memengaruhi halaman dashboard/aplikasi utama sama sekali.
+   ========================================================================= */
+
+.landing-page {
+    font-family: 'Nunito', -apple-system, sans-serif;
+}
+
+.landing-page .press-btn {
+    transition: transform 80ms cubic-bezier(.34,1.56,.64,1), box-shadow 80ms cubic-bezier(.34,1.56,.64,1);
+}
+.landing-page .press-btn:active {
+    transform: translateY(4px);
+    box-shadow: 0 0 0 transparent !important;
+}
+
+.landing-page .reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 600ms cubic-bezier(.34,1.56,.64,1), transform 600ms cubic-bezier(.34,1.56,.64,1);
+}
+.landing-page .reveal.in {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Stempel: masuk dengan elastic scale+rotate, lalu ring "ink" di baliknya
+   memancar sekali sebagai efek "tekanan cap" — bukan cuma scale polos. */
+@keyframes landingStampIn {
+    0%   { opacity: 0; transform: scale(2.2) rotate(-18deg); }
+    60%  { opacity: 1; transform: scale(0.92) rotate(-8deg); }
+    100% { opacity: 1; transform: scale(1) rotate(-8deg); }
+}
+.landing-page .stamp.in {
+    animation: landingStampIn 520ms cubic-bezier(.34,1.56,.64,1) both;
+}
+
+@keyframes landingStampRing {
+    0%   { opacity: .55; transform: scale(0.6); }
+    100% { opacity: 0; transform: scale(1.9); }
+}
+.landing-page .stamp-ring {
+    background: radial-gradient(circle, rgba(88,204,2,0.35) 0%, transparent 70%);
+    opacity: 0;
+}
+.landing-page .stamp.in .stamp-ring {
+    animation: landingStampRing 700ms ease-out 380ms both;
+}
+
+@keyframes landingFloatY {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+.landing-page .float { animation: landingFloatY 3.2s ease-in-out infinite; }
+.landing-page .float-slow { animation: landingFloatY 4.2s ease-in-out infinite; animation-delay: .6s; }
+
+/* Ambient blob di hero — drift lambat, bukan gradient statis */
+@keyframes landingBlobDrift {
+    0%   { transform: translate(0, 0) scale(1); }
+    33%  { transform: translate(30px, -20px) scale(1.08); }
+    66%  { transform: translate(-20px, 24px) scale(0.96); }
+    100% { transform: translate(0, 0) scale(1); }
+}
+.landing-page .blob-a { top: -120px; left: -80px; animation: landingBlobDrift 16s ease-in-out infinite; }
+.landing-page .blob-b { bottom: -140px; right: -100px; animation: landingBlobDrift 20s ease-in-out infinite reverse; }
+
+@keyframes landingDrawFill {
+    from { width: 0%; }
+}
+.landing-page .fill-anim.in {
+    animation: landingDrawFill 900ms cubic-bezier(.34,1.56,.64,1) both;
+}
+
+.landing-page .path-line {
+    background-image: radial-gradient(circle, #E5E5E5 2.5px, transparent 2.5px);
+    background-size: 14px 14px;
+}
+
+.landing-page details > summary { list-style: none; }
+.landing-page details > summary::-webkit-details-marker { display: none; }
+.landing-page details[open] .chev { transform: rotate(180deg); }
+
+.landing-page .focus-ring:focus-visible {
+    outline: 2px solid #1CB0F6;
+    outline-offset: 2px;
+    border-radius: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .landing-page *, .landing-page *::before, .landing-page *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
+    }
+    .landing-page .float, .landing-page .float-slow,
+    .landing-page .blob-a, .landing-page .blob-b {
+        animation: none !important;
+    }
+    .landing-page #heroCard {
+        transform: none !important;
     }
 }
