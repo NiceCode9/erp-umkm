@@ -16,16 +16,15 @@ Urutan ini dirancang agar setiap fase menghasilkan sistem yang bisa langsung dit
 ## Fase 1 - Superadmin & Manajemen Tenant
 
 - CRUD business (tenant) oleh Superadmin — **form Create Business menyertakan pembuatan akun Owner awal sekaligus** (nama, email, password Owner), sesuai keputusan Register tertutup di `AGENTS.md` bagian 3.1. Satu form, satu submit, langsung menghasilkan business + user Owner pertama yang terhubung ke business tersebut.
-- **Kelola penuh tiap tenant dari panel Superadmin** (ditambahkan belakangan, lihat `PRD.md` bagian 5 dan `ARCHITECTURE.md` bagian 2.1): dari halaman detail business, Superadmin dapat menambah cabang, menambah Owner tambahan, dan menambah akun Kasir untuk business tersebut — pakai business context eksplisit via route nested (`/superadmin/businesses/{business}/...`), BUKAN scope otomatis dari user login.
+- **Provisioning cabang & user terpusat di panel Superadmin (KEPUTUSAN FINAL, merevisi catatan sebelumnya):** dari halaman detail business, Superadmin adalah **satu-satunya** yang bisa menambah cabang baru, menambah Owner baru, dan membuat akun Kasir baru untuk business tersebut — pakai business context eksplisit via route nested (`/superadmin/businesses/{business}/...`), BUKAN scope otomatis dari user login. Owner TIDAK punya kemampuan tambah cabang/Kasir baru (lihat revisi Fase 2 di bawah).
 - Aktifkan/nonaktifkan business + efeknya ke akses user terkait.
 - Dashboard Superadmin sederhana (jumlah tenant, status aktif/nonaktif).
 - Activity log untuk aksi aktivasi/nonaktivasi, dan untuk pembuatan business baru.
 
 ## Fase 2 - Master Data & Manajemen Cabang/User
 
-- CRUD cabang oleh Owner.
-- CRUD user Kasir oleh Owner (assign ke cabang).
-- Master data: bahan baku, produk, multi-satuan (`product_units`), supplier, customer.
+- **REVISI:** Owner **TIDAK** membuat cabang atau akun Kasir baru (itu domain Superadmin, lihat Fase 1). Owner di fase ini hanya: mengedit data cabang yang sudah ada (nama, alamat, nonaktifkan), dan mengedit data akun Kasir yang sudah ada (nama, assignment cabang, status aktif) termasuk mengubah/reset password Kasir.
+- Master data: bahan baku, produk, multi-satuan (`product_units`), supplier, customer — ini TETAP domain Owner sepenuhnya (CRUD penuh), tidak terpengaruh revisi di atas.
 - Setting tax per cabang (`branch_settings`).
 
 ## Fase 3 - Pembelian & Stok Bahan Baku (FEFO)

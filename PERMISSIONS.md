@@ -17,11 +17,14 @@ Dikelola menggunakan `spatie/laravel-permission`. Tiga role utama: **Superadmin*
 | Lihat daftar business | ✅ | ❌ | ❌ |
 | Aktifkan/nonaktifkan business | ✅ | ❌ | ❌ |
 | **Manajemen Cabang** | | | |
-| Tambah/ubah/nonaktifkan cabang | ✅ (untuk business manapun, dari panel Superadmin) | ✅ (cabang miliknya sendiri) | ❌ |
+| Tambah cabang baru | ✅ (satu-satunya yang bisa) | ❌ | ❌ |
+| Ubah data/nonaktifkan cabang | ✅ | ✅ (cabang miliknya sendiri) | ❌ |
 | Lihat data cabang sendiri | ❌ | ✅ (semua cabang miliknya) | ✅ (cabang sendiri saja) |
 | **Manajemen User** | | | |
-| Buat/ubah akun Owner tambahan untuk suatu business | ✅ | ❌ | ❌ |
-| Buat/ubah akun Kasir | ✅ (untuk business manapun, dari panel Superadmin) | ✅ (Kasir miliknya sendiri) | ❌ |
+| Buat akun Owner baru untuk suatu business | ✅ (satu-satunya yang bisa) | ❌ | ❌ |
+| Buat akun Kasir baru | ✅ (satu-satunya yang bisa) | ❌ | ❌ |
+| Ubah data akun Kasir (nama, cabang, status aktif) | ✅ | ✅ (Kasir miliknya sendiri) | ❌ |
+| Ubah/reset password akun Kasir | ✅ | ✅ (Kasir miliknya sendiri) | ❌ |
 | Ubah profil sendiri | ❌ | ✅ | ✅ |
 | **Bahan Baku & Stok** | | | |
 | Tambah/ubah master bahan baku | ❌ | ✅ | ❌ |
@@ -73,7 +76,7 @@ Dikelola menggunakan `spatie/laravel-permission`. Tiga role utama: **Superadmin*
 - Kasir **boleh** menerima dan mencatat pembayaran cicilan piutang pelanggan, terbatas pada transaksi di cabangnya sendiri.
 - **Tidak ada self-registration.** Akun hanya dibuat melalui: Superadmin membuat business + akun Owner awal sekaligus; Owner membuat akun Kasir. Tidak ada role yang bisa mendaftar sendiri lewat halaman publik (lihat `AGENTS.md` bagian 3.1).
 - **Kasir boleh input pengiriman** untuk transaksi penjualan miliknya sendiri di cabangnya (bukan cuma Owner) — lihat `BUSINESS-RULES.md` bagian 7 untuk alur lengkapnya. Kasir TIDAK bisa melihat/kelola pengiriman lintas cabang atau kasir lain.
-- **Superadmin punya kemampuan kelola penuh tiap tenant (bukan cuma bikin business+Owner sekali di awal)** — dari panel Superadmin, Superadmin dapat: menambah cabang untuk business manapun, menambah akun Owner tambahan untuk business manapun (kalau perlu lebih dari satu Owner), dan membuat akun Kasir untuk business manapun. Ini untuk keperluan support/onboarding SaaS sederhana (Owner tidak harus mengerjakan semua setup sendirian, Superadmin bisa bantu). Saat Superadmin melakukan aksi ini, dia WAJIB memilih dulu business mana yang sedang dikelola (business context eksplisit, karena Superadmin sendiri tidak terikat `business_id`) — lihat `ARCHITECTURE.md` bagian 3 untuk detail teknis.
+- **KEPUTUSAN FINAL (merevisi keputusan sebelumnya di atas): Superadmin adalah SATU-SATUNYA yang bisa menambah cabang baru dan membuat akun baru (Owner maupun Kasir) — Owner TIDAK BISA menambah cabang atau membuat akun Kasir baru sendiri.** Owner hanya bisa: mengedit data cabang yang sudah ada (nama, alamat, nonaktifkan), dan mengedit data akun Kasir yang sudah ada (nama, assignment cabang, status aktif) termasuk **mengubah/reset password Kasir**. Ini untuk menjaga provisioning struktur tenant (cabang & user) tetap terkontrol lewat satu pintu (Superadmin), sementara operasional harian (edit data, reset password) tetap praktis dilakukan Owner sendiri tanpa perlu menunggu Superadmin. Saat Superadmin menambah cabang/user untuk suatu business, tetap wajib pilih business context eksplisit (lihat `ARCHITECTURE.md` bagian 2.1).
 
 ## 4. Implementasi Teknis (Referensi untuk AGENTS.md)
 

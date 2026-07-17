@@ -55,11 +55,11 @@ Detail matrix permission akan dijabarkan lengkap di `PERMISSIONS.md`.
 - Superadmin dapat melihat daftar seluruh business (UMKM) yang terdaftar.
 - **Pendaftaran tenant tertutup (bukan self-service):** tidak ada halaman Register publik untuk UMKM baru mendaftar sendiri. Satu-satunya cara business baru masuk ke sistem adalah **Superadmin membuat business tersebut secara manual**, sekaligus membuat akun Owner awal (email & password) dalam satu alur form yang sama.
 - Halaman Register bawaan Laravel Breeze **dinonaktifkan/dihapus** — tidak diakses publik. Pembuatan akun setelah itu hanya terjadi via: Superadmin membuat Owner baru (saat membuat business, atau menambah Owner tambahan belakangan), dan Owner ATAU Superadmin membuat akun Kasir (sesuai `PERMISSIONS.md`).
-- **Kelola penuh tiap tenant (bukan cuma saat pembuatan awal):** dari panel Superadmin, saat melihat detail satu business, Superadmin dapat:
-  - Menambah/mengelola **cabang** untuk business tersebut (sama seperti yang bisa dilakukan Owner untuk cabangnya sendiri).
-  - Menambah **akun Owner tambahan** untuk business tersebut (kalau Owner awal butuh dibantu tambah rekan pemilik lain).
-  - Menambah **akun Kasir** untuk business tersebut (assign ke cabang tertentu), sama seperti yang bisa dilakukan Owner.
-  - Ini untuk keperluan support/onboarding SaaS — Owner tidak wajib mengerjakan semua setup sendirian, Superadmin dapat membantu langsung dari panel manajemen tenant.
+- **Provisioning cabang & user terpusat di Superadmin (KEPUTUSAN FINAL):** dari panel Superadmin, saat melihat detail satu business, Superadmin dapat:
+  - **Menambah cabang baru** untuk business tersebut — Owner TIDAK bisa menambah cabang sendiri, hanya bisa mengedit cabang yang sudah ada (nama, alamat, nonaktifkan).
+  - **Menambah akun Owner baru** untuk business tersebut (kalau perlu lebih dari satu pemilik).
+  - **Membuat akun Kasir baru** untuk business tersebut (assign ke cabang tertentu) — Owner TIDAK bisa membuat akun Kasir baru sendiri, hanya bisa mengedit data Kasir yang sudah ada (nama, cabang, status aktif) dan **mengubah/reset password Kasir**.
+  - Alasan: menjaga struktur tenant (cabang & akun) tetap terkontrol lewat satu pintu, sementara operasional harian (edit data, reset password Kasir) tetap praktis dilakukan Owner sendiri tanpa menunggu Superadmin.
 - Superadmin dapat **mengaktifkan/menonaktifkan** sebuah business.
 - Jika business dinonaktifkan (`is_active = false`):
   - Seluruh user (Owner & Kasir) yang terikat pada business tersebut **tidak dapat mengakses aplikasi** (di-redirect ke halaman informasi akun nonaktif).
@@ -70,11 +70,13 @@ Detail matrix permission akan dijabarkan lengkap di `PERMISSIONS.md`.
 ## 6. Modul Fungsional
 
 ### 6.1 Manajemen Cabang
-- Owner dapat menambah, mengubah, menonaktifkan cabang.
+- **Superadmin menambah cabang baru** untuk business tertentu (dari panel Superadmin). Owner **tidak bisa** menambah cabang sendiri.
+- Owner dapat mengubah data cabang (nama, alamat) dan menonaktifkan cabang miliknya.
 - Setiap cabang memiliki stok bahan baku & produk sendiri (tidak tercampur antar cabang, kecuali melalui modul pengiriman).
 
 ### 6.2 Manajemen Pengguna
-- Owner membuat akun Kasir dan menugaskannya ke cabang tertentu.
+- **Superadmin membuat akun Kasir baru** untuk business tertentu, menugaskannya ke cabang tertentu (dari panel Superadmin). Owner **tidak bisa** membuat akun Kasir baru sendiri.
+- Owner dapat mengubah data akun Kasir yang sudah ada (nama, assignment cabang, status aktif) dan **mengubah/reset password Kasir**.
 - Satu Kasir terikat ke satu cabang (asumsi awal; dikonfirmasi ulang saat drafting ERD bila ada kebutuhan kasir lintas-cabang).
 
 ### 6.3 Bahan Baku & Stok
