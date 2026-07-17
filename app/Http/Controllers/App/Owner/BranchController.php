@@ -23,11 +23,13 @@ class BranchController extends Controller
 
     public function create(): View
     {
+        $this->authorize('create', Branch::class);
         return view('app.owner.branches.create');
     }
 
     public function store(Request $request): RedirectResponse
     {
+        $this->authorize('create', Branch::class);
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'address' => 'nullable|string',
@@ -57,13 +59,13 @@ class BranchController extends Controller
 
     public function edit(Branch $branch): View
     {
-        $this->authorizeBranch($branch);
+        $this->authorize('update', $branch);
         return view('app.owner.branches.edit', compact('branch'));
     }
 
     public function update(Request $request, Branch $branch): RedirectResponse
     {
-        $this->authorizeBranch($branch);
+        $this->authorize('update', $branch);
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -78,10 +80,15 @@ class BranchController extends Controller
             ->with('success', 'Cabang berhasil diupdate.');
     }
 
-    private function authorizeBranch(Branch $branch): void
+    public function destroy(Branch $branch): RedirectResponse
     {
-        if ($branch->business_id !== auth()->user()->business_id) {
-            abort(403);
-        }
+        $this->authorize('delete', $branch);
+
+        $branch->delete();
+
+        return redirect()
+            ->route('app.branches.index')
+            ->with('success', 'Cabang berhasil dihapus.');
     }
+}
 }

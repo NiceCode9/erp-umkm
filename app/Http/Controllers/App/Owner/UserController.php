@@ -99,4 +99,36 @@ class UserController extends Controller
             ->route('app.kasir.index')
             ->with('success', 'Kasir berhasil diupdate.');
     }
+
+    public function resetPasswordForm(User $kasir): View
+    {
+        if ($kasir->business_id !== auth()->user()->business_id) {
+            abort(403);
+        }
+
+        $this->authorize('resetPassword', $kasir);
+
+        return view('app.owner.kasir.reset-password', compact('kasir'));
+    }
+
+    public function resetPassword(Request $request, User $kasir): RedirectResponse
+    {
+        if ($kasir->business_id !== auth()->user()->business_id) {
+            abort(403);
+        }
+
+        $this->authorize('resetPassword', $kasir);
+
+        $validated = $request->validate([
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        $kasir->update([
+            'password' => Hash::make($validated['password']),
+        ]);
+
+        return redirect()
+            ->route('app.kasir.index')
+            ->with('success', 'Password kasir berhasil direset.');
+    }
 }

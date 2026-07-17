@@ -4,7 +4,9 @@
 <x-card>
     <div class="flex items-center justify-between mb-4">
         <h2 class="text-lg font-semibold">Daftar Kasir</h2>
-        <a href="{{ route('app.kasir.create') }}"><x-button>Tambah Kasir</x-button></a>
+        @can('create-kasir')
+            <a href="{{ route('app.kasir.create') }}"><x-button>Tambah Kasir</x-button></a>
+        @endcan
     </div>
     <div class="overflow-x-auto">
         <table class="w-full text-sm">
@@ -24,7 +26,12 @@
                         <td class="px-4 py-3 text-muted-foreground">{{ $user->email }}</td>
                         <td class="px-4 py-3">{{ $user->branch->name ?? '-' }}</td>
                         <td class="px-4 py-3">{!! $user->is_active ? '<x-badge variant="success">Aktif</x-badge>' : '<x-badge variant="danger">Nonaktif</x-badge>' !!}</td>
-                        <td class="px-4 py-3"><a href="{{ route('app.kasir.edit', $user) }}"><x-button variant="secondary" size="sm">Edit</x-button></a></td>
+                        <td class="px-4 py-3">
+                            <a href="{{ route('app.kasir.edit', $user) }}"><x-button variant="secondary" size="sm">Edit</x-button></a>
+                            @can('reset-kasir-password', $user)
+                                <a href="{{ route('app.kasir.reset-password.form', $user) }}"><x-button variant="warning" size="sm">Reset Password</x-button></a>
+                            @endcan
+                        </td>
                     </tr>
                 @empty
                     <tr><td colspan="5" class="px-4 py-8 text-center text-muted-foreground">Belum ada Kasir.</td></tr>
