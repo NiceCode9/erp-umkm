@@ -94,6 +94,7 @@ Seluruh aksi berikut WAJIB tercatat via `spatie/laravel-activitylog`:
 - Transaksi pembelian, penjualan, produksi.
 - Perubahan stok manual (stok opname).
 - Perubahan setting tax/diskon per cabang.
+- **Impersonate**: setiap kali Superadmin mulai dan berhenti impersonate akun lain — WAJIB catat siapa Superadmin-nya, akun siapa yang di-impersonate, waktu mulai, waktu berhenti. Ini WAJIB, tidak boleh dilewatkan — fitur ini rawan disalahgunakan kalau tidak ada jejak audit.
 
 ## 8. Hal yang TIDAK Boleh Dilakukan AI Agent
 
