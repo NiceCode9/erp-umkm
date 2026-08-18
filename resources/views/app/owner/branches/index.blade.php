@@ -21,7 +21,13 @@
                     <tr class="hover:bg-muted/50">
                         <td class="px-4 py-3 font-medium">{{ $branch->name }}</td>
                         <td class="px-4 py-3 text-muted-foreground">{{ $branch->address }}</td>
-                        <td class="px-4 py-3">{!! $branch->is_active ? '<x-badge variant="success">Aktif</x-badge>' : '<x-badge variant="danger">Nonaktif</x-badge>' !!}</td>
+                        <td class="px-4 py-3">
+                            @if ($branch->is_active)
+                                <x-badge variant="success">Aktif</x-badge>
+                            @else
+                                <x-badge variant="danger">Nonaktif</x-badge>
+                            @endif
+                        </td>
                         <td class="px-4 py-3">
                             <div class="flex gap-2">
                                 <a href="{{ route('app.branches.edit', $branch) }}"><x-button variant="secondary" size="sm">Edit</x-button></a>

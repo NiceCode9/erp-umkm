@@ -91,4 +91,3 @@ class BranchController extends Controller
             ->with('success', 'Cabang berhasil dihapus.');
     }
 }
-}
