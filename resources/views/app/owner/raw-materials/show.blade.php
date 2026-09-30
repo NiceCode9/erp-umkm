@@ -11,6 +11,21 @@
             <a href="{{ route('app.raw-materials.edit', $rawMaterial) }}"><x-button variant="secondary" size="sm">Edit</x-button></a>
         </div>
 
+        <div class="flex items-center gap-2 mb-4 pb-4 border-b border-border">
+            <span class="text-sm text-muted-foreground">Sertifikasi Halal:</span>
+            @if($rawMaterial->halal_cert_expired_date)
+                @if($rawMaterial->isHalalExpired())
+                    <x-badge variant="danger">Expired {{ $rawMaterial->halal_cert_expired_date->format('d M Y') }} — tidak dapat dipakai untuk produksi</x-badge>
+                @elseif($rawMaterial->isHalalExpiringWithin(30))
+                    <x-badge variant="warning">Akan Expired {{ $rawMaterial->halal_cert_expired_date->format('d M Y') }}</x-badge>
+                @else
+                    <x-badge variant="success">Aktif s/d {{ $rawMaterial->halal_cert_expired_date->format('d M Y') }}</x-badge>
+                @endif
+            @else
+                <span class="text-sm text-muted-foreground">-</span>
+            @endif
+        </div>
+
         <h3 class="text-sm font-semibold text-foreground mb-3">Batch Aktif per Cabang</h3>
         @if($batches->count())
             <div class="overflow-x-auto">

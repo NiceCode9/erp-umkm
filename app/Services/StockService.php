@@ -72,10 +72,28 @@ class StockService
     }
 
     /**
+     * Ambil bahan baku dalam resep yang sertifikat halal-nya sudah kedaluwarsa.
+     *
+     * Bahan di daftar ini DIBLOKIR total untuk produksi — bukan hanya dilewati FEFO,
+     * tapi tidak boleh dikonsumsi sama sekali di cabang mana pun.
+     * Dipakai controller untuk pre-check SEBELUM production order dibuat.
+     */
+    public function getExpiredHalalRawMaterialsInRecipe(int $recipeId): Collection
+    {
+        $recipe = \App\Models\Recipe::with('items.rawMaterial')->findOrFail($recipeId);
+
+        return $recipe->items
+            ->pluck('rawMaterial')
+            ->filter(fn ($rm) => $rm && $rm->isHalalExpired())
+            ->values();
+    }
+
+    /**
      * Consume raw materials for production using multi-recipe FEFO.
      * total_kebutuhan = qty_per_batch × batch_multiplier
      *
      * @throws \InvalidArgumentException when stock is insufficient
+     * @throws \InvalidArgumentException when a raw material's halal certificate has expired
      */
     public function consumeRawMaterialsForProduction(
         int $recipeId, int $branchId, int $businessId,
@@ -87,6 +105,10 @@ class StockService
         if ($items->isEmpty()) {
             throw new \InvalidArgumentException('Resep ini belum memiliki bahan baku.');
         }
+
+        // Guard defensif: bahan baku dengan sertifikat halal kedaluwarsa tidak boleh
+        // dikonsumsi meski caller sudah melakukan pre-check di controller.
+        $this->assertNoExpiredHalalMaterials($items);
 
         $shortages = [];
 
@@ -236,6 +258,37 @@ class StockService
         }
 
         return $shortages;
+    }
+
+    /**
+     * Pastikan tidak ada bahan baku dalam resep yang sertifikat halal-nya sudah
+     * kedaluwarsa. Kalau ada, lempar exception berisi daftar bahannya.
+     *
+     * Ini aturan yang berbeda dari FEFO: FEFO hanya mengurutkan batch, sedangkan
+     * halal kedaluwarsa bersifat MELARANG TOTAL — bukan sekadar diprioritaskan.
+     *
+     * @param  \Illuminate\Support\Collection<int, \App\Models\RecipeItem>  $items
+     *
+     * @throws \InvalidArgumentException
+     */
+    private function assertNoExpiredHalalMaterials(Collection $items): void
+    {
+        $expired = $items->pluck('rawMaterial')
+            ->filter(fn ($rm) => $rm && $rm->isHalalExpired());
+
+        if ($expired->isEmpty()) {
+            return;
+        }
+
+        $msgs = $expired->map(fn ($rm) => sprintf(
+            '%s (sertifikat halal kedaluwarsa %s)',
+            $rm->name,
+            $rm->halal_cert_expired_date->format('d M Y')
+        ))->implode('; ');
+
+        throw new \InvalidArgumentException(
+            "Produksi diblokir — bahan baku berikut sudah melewati masa kedaluwarsa sertifikat halal: {$msgs}."
+        );
     }
 
     /**

@@ -68,6 +68,7 @@ Role (Superadmin/Owner/Kasir) dikelola via `spatie/laravel-permission` (tabel `r
 | name | string | |
 | base_unit | string | Satuan dasar stok, mis. `kg`, `liter` |
 | minimum_stock | decimal | Untuk alert stok minimum |
+| halal_cert_expired_date | date, nullable | Tanggal kedaluwarsa sertifikat halal **bahan baku ini**. Jika sudah lewat, bahan Baku DIBLOKIR total untuk produksi di semua cabang. Dasar notifikasi dashboard Owner (lihat `PRD.md` bagian 6.11 dan `BUSINESS-RULES.md` bagian 11) |
 
 ### `raw_material_batches` (untuk FEFO)
 | Kolom | Tipe | Keterangan |
@@ -93,7 +94,7 @@ Role (Superadmin/Owner/Kasir) dikelola via `spatie/laravel-permission` (tabel `r
 | image | string, nullable | via medialibrary |
 | halal_cert_number | string, nullable | Nomor sertifikat halal produk ini |
 | halal_cert_issuer | string, nullable | Nama lembaga penerbit sertifikasi halal |
-| halal_cert_expired_date | date, nullable | Tanggal kedaluwarsa sertifikat halal. Dasar notifikasi "akan expired dalam 30 hari" di dashboard Owner (lihat `PRD.md` bagian 6.11 dan `BUSINESS-RULES.md` bagian 12) |
+| halal_cert_expired_date | date, nullable | Tanggal kedaluwarsa sertifikat halal. Dasar notifikasi "akan expired dalam 30 hari" di dashboard Owner (lihat `PRD.md` bagian 6.11 dan `BUSINESS-RULES.md` bagian 10) |
 
 ### `product_units` (Multi-Satuan / Eceran-Borongan)
 | Kolom | Tipe | Keterangan |

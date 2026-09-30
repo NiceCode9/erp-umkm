@@ -164,3 +164,20 @@ Dokumen ini merinci logika yang WAJIB diimplementasikan secara konsisten via Ser
 - Jika `halal_cert_expired_date - hari ini <= 30 hari` (dan belum lewat), produk tersebut masuk daftar "Sertifikasi Akan Expired" di dashboard Owner.
 - Produk yang sertifikatnya **sudah lewat tanggal expired** (bukan cuma akan expired) ditandai terpisah dengan indikator lebih tegas (mis. `--destructive` bukan `--warning`) — ini kondisi lebih kritis karena produk secara legal tidak lagi bersertifikat halal, Owner perlu tahu segera.
 - Notifikasi ini murni informatif di dashboard (badge/list) — TIDAK memblokir penjualan produk tersebut secara otomatis (keputusan bisnis soal stop jual produk yang sertifikatnya lewat tetap di tangan Owner, bukan dipaksa sistem, kecuali diputuskan lain di kemudian hari).
+
+## 11. Blokir Produksi untuk Bahan Baku Halal Kedaluwarsa
+
+Berbeda dengan produk jadi (bagian 10 yang murni informatif), kedaluwarsa halal pada **bahan baku** bersifat **mengikat dan memblokir produksi**.
+
+- Sumber data: `raw_materials.halal_cert_expired_date` (level bahan baku, `nullable`). Tidak ada kolom ini di `raw_material_batches` — pemeriksaannya berada di level bahan baku, berlaku untuk **semua batch dan semua cabang**.
+- Perbandingan aturan ini **berbeda sifatnya dari FEFO** (bagian 2):
+  - FEFO = aturan **urutan** (batch mana yang dikonsumsi lebih dulu).
+  - Halal kedaluwarsa = aturan **larangan total** (batch tidak boleh dikonsumsi sama sekali).
+- Bahan yang terblokir **tetap dihitung sebagai stok** dan **masih bisa** digunakan pada penjualan, opname, maupun distribusi antar cabang — pemblokiran ini hanya berlaku untuk jalur produksi. (Perilaku ini disepakati eksplisit; perlu diperluas ke jalur lain bila nanti diputuskan berbeda.)
+- Mekanisme pemblokiran berlapis di `app/Services/StockService.php`:
+  1. **Pre-check** — `getExpiredHalalRawMaterialsInRecipe()` dipanggil `ProductionController::store()` **sebelum** `production_orders` dibuat, sehingga tidak ada order yatim berstatus draft. Pesan error menyebut nama bahan + tanggal kedaluwarsanya.
+  2. **Guard defensif** — `assertNoExpiredHalalMaterials()` dipanggil di dalam `consumeRawMaterialsForProduction()` tepat sebelum transaksi dimulai, agar tidak ada caller lain yang bisa melewati aturan ini.
+- Notifikasi dashboard Owner memakai dua scope di `RawMaterial`:
+  - `scopeHalalExpiringWithin(30)` → card "Sertifikasi Halal Bahan Baku Akan Expired" (badge warning).
+  - `scopeHalalExpired()` → card "Sertifikasi Halal Bahan Baku Sudah Expired" (badge destructive).
+- Cara membuka blokir: Owner memperbarui `halal_cert_expired_date` (di form Edit Bahan Baku) ke tanggal yang masih berlaku, atau mengosongkannya bila bahan memang tidak bersertifikasi halal.

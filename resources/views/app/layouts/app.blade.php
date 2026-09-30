@@ -129,13 +129,13 @@
 
             <main class="flex-1 p-6">
                 @if (session('success'))
-                    <div class="mb-4 p-4 bg-primary/10 text-primary rounded-[var(--radius)] border border-primary/20">
+                    <div class="mb-4 p-4 bg-primary/10 text-primary rounded-[var(--radius)] border border-primary/20 whitespace-pre-line">
                         {{ session('success') }}
                     </div>
                 @endif
                 @if (session('error'))
                     <div
-                        class="mb-4 p-4 bg-destructive/10 text-destructive rounded-[var(--radius)] border border-destructive/20">
+                        class="mb-4 p-4 bg-destructive/10 text-destructive rounded-[var(--radius)] border border-destructive/20 whitespace-pre-line">
                         {{ session('error') }}
                     </div>
                 @endif

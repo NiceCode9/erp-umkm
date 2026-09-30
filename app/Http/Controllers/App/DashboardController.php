@@ -61,6 +61,18 @@ class DashboardController extends Controller
             ->where('halal_cert_expired_date', '<', $now)
             ->get();
 
+        // Notifikasi halal untuk BAHAN BAKU. Berbeda dengan produk jadi di atas
+        // yang murni informatif, 'expired' di sini berarti bahan bakunya memblokir
+        // pemakaian di produksi — jadi ditampilkan dengan badge destructive.
+        $materialHalalExpiringSoon = RawMaterial::where('business_id', $businessId)
+            ->halalExpiringWithin(30)
+            ->orderBy('halal_cert_expired_date')
+            ->get();
+        $materialHalalExpired = RawMaterial::where('business_id', $businessId)
+            ->halalExpired()
+            ->orderBy('halal_cert_expired_date')
+            ->get();
+
         // Outstanding utang piutang
         $outstandingPurchases = Purchase::where('business_id', $businessId)
             ->where('payment_status', '!=', 'paid')
@@ -111,6 +123,7 @@ class DashboardController extends Controller
 
         return view('app.dashboard-owner', compact(
             'lowStockMaterials', 'halalExpiringSoon', 'halalExpired',
+            'materialHalalExpiringSoon', 'materialHalalExpired',
             'outstandingPurchases', 'outstandingSales',
             'todayTotal', 'todayCount', 'todayAvg', 'chartDays'
         ));

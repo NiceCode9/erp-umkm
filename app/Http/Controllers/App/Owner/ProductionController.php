@@ -64,6 +64,23 @@ class ProductionController extends Controller
 
         $quantityTarget = $recipe->yield_quantity * $validated['batch_multiplier'];
 
+        // Pre-check halal: bahan baku yang sertifikat halalnya sudah kedaluwarsa
+        // tidak boleh dipakai produksi sama sekali (berbeda dari FEFO yang hanya
+        // mengurutkan batch). Dicek sebelum production order dibuat agar tidak
+        // menyisakan order yatim berstatus draft.
+        $expiredHalalMaterials = $this->stockService->getExpiredHalalRawMaterialsInRecipe($recipe->id);
+
+        if ($expiredHalalMaterials->isNotEmpty()) {
+            $msg = $expiredHalalMaterials->map(fn ($rm) =>
+                "• {$rm->name} — kedaluwarsa " . $rm->halal_cert_expired_date->format('d M Y')
+            )->implode("\n");
+
+            return back()->withInput()->with(
+                'error',
+                "Produksi diblokir — bahan baku berikut sudah melewati masa kedaluwarsa sertifikat halal:\n{$msg}\nPerbarui data sertifikasi halal bahan baku tersebut sebelum produksi."
+            );
+        }
+
         // Pre-check stock
         $shortages = $this->stockService->checkProductionStockAvailability(
             $recipe->id, $validated['branch_id'], $validated['batch_multiplier']
@@ -71,10 +88,10 @@ class ProductionController extends Controller
 
         if (!empty($shortages)) {
             $msg = collect($shortages)->map(fn ($s) =>
-                "{$s->name}: butuh {$s->needed} {$s->unit}, tersedia {$s->available} {$s->unit} (kurang {$s->shortage})"
-            )->implode('<br>');
+                "• {$s->name}: butuh {$s->needed} {$s->unit}, tersedia {$s->available} {$s->unit} (kurang {$s->shortage})"
+            )->implode("\n");
 
-            return back()->withInput()->with('error', "Stok bahan baku tidak mencukupi:<br>{$msg}");
+            return back()->withInput()->with('error', "Stok bahan baku tidak mencukupi:\n{$msg}");
         }
 
         $productionCode = $this->stockService->generateProductionCode();

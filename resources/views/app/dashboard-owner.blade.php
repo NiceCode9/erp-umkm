@@ -134,6 +134,42 @@
         </x-card>
     @endif
 
+    @if(isset($materialHalalExpiringSoon) && $materialHalalExpiringSoon->count())
+        <x-card class="mb-6 border border-warning/30">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="text-lg font-semibold text-warning">Sertifikasi Halal Bahan Baku Akan Expired</h2>
+                <a href="{{ route('app.raw-materials.index') }}" class="text-xs text-muted-foreground hover:text-foreground">Lihat semua</a>
+            </div>
+            <p class="text-xs text-muted-foreground mb-3">Kedaluwarsa dalam 30 hari ke depan — masih bisa dipakai untuk produksi.</p>
+            <div class="space-y-2">
+                @foreach($materialHalalExpiringSoon as $rm)
+                    <div class="flex justify-between items-center text-sm p-2 bg-warning/5 rounded-[var(--radius)]">
+                        <span class="font-medium text-foreground">{{ $rm->name }}</span>
+                        <span class="text-warning font-semibold">Exp: {{ $rm->halal_cert_expired_date->format('d M Y') }}</span>
+                    </div>
+                @endforeach
+            </div>
+        </x-card>
+    @endif
+
+    @if(isset($materialHalalExpired) && $materialHalalExpired->count())
+        <x-card class="mb-6 border border-destructive/30">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="text-lg font-semibold text-destructive">Sertifikasi Halal Bahan Baku Sudah Expired</h2>
+                <a href="{{ route('app.raw-materials.index') }}" class="text-xs text-muted-foreground hover:text-foreground">Lihat semua</a>
+            </div>
+            <p class="text-xs text-muted-foreground mb-3">Bahan baku ini <strong>diblokir</strong> dan tidak dapat dipakai untuk produksi sampai tanggal kedaluwarsa diperbarui.</p>
+            <div class="space-y-2">
+                @foreach($materialHalalExpired as $rm)
+                    <div class="flex justify-between items-center text-sm p-2 bg-destructive/5 rounded-[var(--radius)]">
+                        <span class="font-medium text-foreground">{{ $rm->name }}</span>
+                        <span class="text-destructive font-semibold">Expired: {{ $rm->halal_cert_expired_date->format('d M Y') }}</span>
+                    </div>
+                @endforeach
+            </div>
+        </x-card>
+    @endif
+
     @if(isset($outstandingPurchases) && $outstandingPurchases->count())
         <x-card class="mb-6">
             <h2 class="text-lg font-semibold text-foreground mb-3">Utang Supplier</h2>

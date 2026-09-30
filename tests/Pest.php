@@ -1,6 +1,15 @@
 <?php
 
+use App\Models\Branch;
+use App\Models\Business;
+use App\Models\Product;
+use App\Models\RawMaterial;
+use App\Models\RawMaterialBatch;
+use App\Models\Recipe;
+use App\Models\RecipeItem;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /*
@@ -47,4 +56,102 @@ expect()->extend('toBeOne', function () {
 function something()
 {
     // ..
+}
+
+/*
+|--------------------------------------------------------------------------
+| Domain Test Helpers
+|--------------------------------------------------------------------------
+|
+| Project ini belum punya factory untuk Branch/Product/Recipe/RawMaterial, jadi
+| helper di bawah dipakai bersama oleh test yang butuh setup produksi.
+|
+*/
+
+function makeOwner(?Business $business = null): User
+{
+    foreach (['Superadmin', 'Owner', 'Kasir'] as $role) {
+        Role::findOrCreate($role, 'web');
+    }
+
+    $business ??= Business::factory()->create(['is_active' => true]);
+
+    $owner = User::factory()->create([
+        'business_id' => $business->id,
+        'is_active' => true,
+    ]);
+    $owner->assignRole('Owner');
+
+    return $owner;
+}
+
+function makeBranchFor(Business $business, string $name = 'Cabang Utama'): Branch
+{
+    return Branch::create([
+        'business_id' => $business->id,
+        'name' => $name,
+        'address' => 'Alamat cabang uji coba',
+        'is_active' => true,
+    ]);
+}
+
+function makeRawMaterial(
+    Business $business,
+    string $name = 'Tepung Terigu',
+    ?string $halalCertExpiredDate = null,
+    string $baseUnit = 'kg',
+): RawMaterial {
+    return RawMaterial::create([
+        'business_id' => $business->id,
+        'name' => $name,
+        'base_unit' => $baseUnit,
+        'minimum_stock' => 0,
+        'halal_cert_expired_date' => $halalCertExpiredDate,
+    ]);
+}
+
+/**
+ * Siapkan satu skenario produksi lengkap: produk, resep, item resep, dan batch
+ * bahan baku dengan stok tersedia. Return array asosiatif.
+ */
+function makeProductionSetup(
+    Business $business,
+    Branch $branch,
+    RawMaterial $rawMaterial,
+    float $stockQuantity = 100.0,
+    float $qtyPerBatch = 1.0,
+): array {
+    $product = Product::create([
+        'business_id' => $business->id,
+        'name' => 'Roti Tawar',
+        'sku' => 'ROT-001',
+        'base_unit' => 'pcs',
+        'selling_price' => 15000,
+    ]);
+
+    $recipe = Recipe::create([
+        'product_id' => $product->id,
+        'name' => 'Resep Roti Tawar',
+        'yield_quantity' => 10,
+        'is_active' => true,
+    ]);
+
+    RecipeItem::create([
+        'recipe_id' => $recipe->id,
+        'raw_material_id' => $rawMaterial->id,
+        'qty_per_batch' => $qtyPerBatch,
+        'unit' => $rawMaterial->base_unit,
+    ]);
+
+    $batch = RawMaterialBatch::create([
+        'raw_material_id' => $rawMaterial->id,
+        'branch_id' => $branch->id,
+        'batch_no' => 'BATCH-001',
+        'quantity_remaining' => $stockQuantity,
+        'purchase_price' => 20000,
+        'expired_date' => now()->addYear()->format('Y-m-d'),
+        'received_at' => now()->format('Y-m-d'),
+    ]);
+
+    return compact('product', 'recipe', 'batch');
 }

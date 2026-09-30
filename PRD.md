@@ -86,6 +86,9 @@ Detail matrix permission akan dijabarkan lengkap di `PERMISSIONS.md`.
   - Tab/bagian "Riwayat Pergerakan" di halaman detail tiap bahan baku (dan nanti produk jadi) — hanya pergerakan item tersebut, untuk audit cepat per item.
   - Menu terpisah "Riwayat Stok" (ledger umum) — lintas semua bahan baku/produk, bisa difilter cabang, jenis pergerakan (masuk/keluar), rentang tanggal, dan sumber (pembelian/produksi/penjualan/opname/distribusi) — untuk audit yang lebih luas.
 - Penerapan **FEFO** (First Expired First Out) untuk bahan baku yang memiliki tanggal kedaluwarsa — dikelola berbasis batch/lot.
+- **Sertifikasi halal bahan baku**: setiap bahan baku dapat menyimpan satu `halal_cert_expired_date` (opsional, level bahan baku — bukan per batch). Jika tanggal ini sudah lewat, bahan baku tersebut **diblokir total untuk produksi** di seluruh cabang, dan halaman produksi menampilkan pesan error yang menyebut bahan mana yang bermasalah beserta tanggal kedaluwarsanya.
+  - Aturan ini **berbeda dari FEFO**: FEFO hanya mengurutkan batch mana yang dipakai lebih dulu, sedangkan halal kedaluwarsa bersifat larangan total — bukan sekadar prioritas.
+  - List bahan baku & halaman detail menampilkan badge status halal (Expired / Akan Expired / Aktif) agar Owner langsung tahu bahan mana yang sedang terkunci.
 - Stok opname: penyesuaian manual stok dengan pencatatan alasan (rusak, hilang, selisih hitung).
 - Notifikasi stok minimum (reorder alert).
 
@@ -142,6 +145,7 @@ Detail matrix permission akan dijabarkan lengkap di `PERMISSIONS.md`.
 
 ### 6.11 Dashboard
 - Dashboard Owner: ringkasan seluruh cabang (penjualan, stok kritis, utang-piutang jatuh tempo, **sertifikasi halal yang akan expired dalam 30 hari**).
+- Dashboard Owner juga menampilkan notifikasi terpisah untuk **bahan baku** yang sertifikat halalnya akan expired dalam 30 hari, dan yang **sudah expired** (bahan yang sedang diblokir dari produksi).
 - Dashboard Kasir: ringkasan transaksi harian miliknya.
 - Dashboard Superadmin: daftar tenant, status aktif/nonaktif.
 

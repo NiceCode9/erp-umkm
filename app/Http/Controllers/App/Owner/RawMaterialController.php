@@ -38,14 +38,12 @@ class RawMaterialController extends Controller
                 (float) ($branchStocks->firstWhere('branch_id', $b->id)?->total_stock ?? 0) < $rm->minimum_stock
             )->count();
 
-            return (object) [
-                'id' => $rm->id,
-                'name' => $rm->name,
-                'base_unit' => $rm->base_unit,
-                'minimum_stock' => $rm->minimum_stock,
-                'total_stock' => $totalStock,
-                'low_stock_branches' => $lowStockBranches,
-            ];
+            // Dikembalikan sebagai model (bukan stdClass) supaya helper
+            // seperti isHalalExpired() tetap bisa dipakai di view.
+            $rm->setAttribute('total_stock', $totalStock);
+            $rm->setAttribute('low_stock_branches', $lowStockBranches);
+
+            return $rm;
         });
 
         return view('app.owner.raw-materials.index', compact('materialData'));
@@ -62,6 +60,7 @@ class RawMaterialController extends Controller
             'name' => 'required|string|max:255',
             'base_unit' => 'required|string|max:50',
             'minimum_stock' => 'nullable|numeric|min:0',
+            'halal_cert_expired_date' => 'nullable|date',
         ]);
 
         RawMaterial::create($validated);
@@ -125,6 +124,7 @@ class RawMaterialController extends Controller
             'name' => 'required|string|max:255',
             'base_unit' => 'required|string|max:50',
             'minimum_stock' => 'nullable|numeric|min:0',
+            'halal_cert_expired_date' => 'nullable|date',
         ]);
 
         $rawMaterial->update($validated);

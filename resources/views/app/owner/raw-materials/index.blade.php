@@ -14,6 +14,7 @@
                     <th class="px-4 py-3 text-left font-semibold text-muted-foreground">Satuan</th>
                     <th class="px-4 py-3 text-right font-semibold text-muted-foreground">Total Stok</th>
                     <th class="px-4 py-3 text-left font-semibold text-muted-foreground">Min. Stok</th>
+                    <th class="px-4 py-3 text-left font-semibold text-muted-foreground">Sertifikasi Halal</th>
                     <th class="px-4 py-3 text-left font-semibold text-muted-foreground">Status</th>
                     <th class="px-4 py-3 text-left font-semibold text-muted-foreground">Aksi</th>
                 </tr>
@@ -25,6 +26,19 @@
                         <td class="px-4 py-3">{{ $item->base_unit }}</td>
                         <td class="px-4 py-3 text-right font-semibold">{{ format_number($item->total_stock) }}</td>
                         <td class="px-4 py-3">{{ $item->minimum_stock }}</td>
+                        <td class="px-4 py-3">
+                            @if($item->halal_cert_expired_date)
+                                @if($item->isHalalExpired())
+                                    <x-badge variant="danger">Expired {{ $item->halal_cert_expired_date->format('d M Y') }}</x-badge>
+                                @elseif($item->isHalalExpiringWithin(30))
+                                    <x-badge variant="warning">Akan Expired {{ $item->halal_cert_expired_date->format('d M Y') }}</x-badge>
+                                @else
+                                    <x-badge variant="success">Aktif s/d {{ $item->halal_cert_expired_date->format('d M Y') }}</x-badge>
+                                @endif
+                            @else
+                                <span class="text-muted-foreground">-</span>
+                            @endif
+                        </td>
                         <td class="px-4 py-3">
                             @if($item->low_stock_branches > 0)
                                 <x-badge variant="warning">{{ $item->low_stock_branches }} cabang stok rendah</x-badge>
@@ -43,7 +57,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="6" class="px-4 py-8 text-center text-muted-foreground">Belum ada bahan baku.</td></tr>
+                    <tr><td colspan="7" class="px-4 py-8 text-center text-muted-foreground">Belum ada bahan baku.</td></tr>
                 @endforelse
             </tbody>
         </table>
