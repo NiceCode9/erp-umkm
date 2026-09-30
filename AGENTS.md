@@ -83,6 +83,16 @@ Beberapa tabel pakai pola polymorphic MANUAL (bukan `morphTo()` bawaan Laravel):
 - Buat SATU accessor/method terpusat per model (mis. `getItemAttribute()` di `StockMovement`, `getBatchAttribute()` di `StockDistributionItemBatch`) yang melakukan branching berdasarkan `*_type` dan me-return model yang benar (`Product` atau `RawMaterial`, `ProductBatch` atau `RawMaterialBatch`). SEMUA tempat yang butuh resolve data ini (list, detail, riwayat, laporan) WAJIB pakai accessor ini — JANGAN tulis ulang logic branching `if item_type === ...` di banyak tempat berbeda, itu yang menyebabkan bug seperti ini (satu tempat benar, tempat lain lupa di-cek).
 - Test wajib: buat data dengan `item_id`/`batch_id` yang SAMA ANGKANYA tapi `item_type`/`batch_type` BERBEDA (persis skenario `products.id=1` vs `raw_materials.id=1`) — pastikan hasilnya benar-benar berbeda sesuai type-nya, bukan tertukar.
 
+### 5.2 ATURAN WAJIB: Penulisan `@can` di Blade
+
+`spatie/laravel-permission` mendaftarkan `Gate::before` yang mengembalikan `true` **sebelum** policy dieksekusi. Akibatnya nama permission yang dipakai di `@can` akan **melewati seluruh policy**, termasuk pengecekan `business_id`.
+
+- Gate di level **fitur/route** → pakai nama **permission** (`@can('edit-branches')`). Ini benar, tidak butuh policy.
+- Gate yang **bergantung objek** (satu baris daftar, satu form) → WAJIB pakai nama **method policy** (`@can('resetPassword', $user)`, `@can('update', $branch)`), bukan nama permission. Hanya dengan begitu `UserPolicy`/`BranchPolicy` benar-benar dijalankan dan tenant check tidak terlewat.
+- Verifikasi lewat test: assert halaman **tidak** menampilkan tombol untuk objek milik tenant lain.
+
+Lihat `PERMISSIONS.md` bagian 6.
+
 ## 6. Snapshot Data Transaksi
 
 - Nilai diskon, tax, dan harga pada transaksi penjualan WAJIB disimpan sebagai **snapshot** di tabel transaksi (bukan hanya referensi ke tabel setting/produk), agar riwayat transaksi lama tidak berubah jika setting/harga diubah di kemudian hari.
@@ -124,3 +134,4 @@ Perbarui bagian ini setiap kali ada keputusan arsitektur baru yang disepakati se
 | - | Keputusan: Register publik dihapus (tenant hanya dibuat oleh Superadmin); satu controller auth (AuthenticatedSessionController diperluas, LoginController custom dihapus); font pakai system stack (Figtree dihapus) |
 | - | Bug fix kritis: model User TIDAK BOLEH pakai Global Scope generik BelongsToBusiness (menyebabkan infinite recursion/crash setelah login) — lihat bagian 2.1 |
 | - | Fitur: `raw_materials.halal_cert_expired_date` (nullable, level bahan baku). Bahan baku yang sertifikat halalnya sudah lewat DIBLOKIR total untuk produksi di semua cabang. Pemblokiran berlapis di `StockService`: pre-check `getExpiredHalalRawMaterialsInRecipe()` di controller (sebelum order dibuat) + guard defensif `assertNoExpiredHalalMaterials()` di dalam `consumeRawMaterialsForProduction()`. Dashboard Owner dapat 2 widget notifikasi. Lihat `BUSINESS-RULES.md` bagian 11 |
+| - | Hardening authorization: (1) `Controller` WAJIB `use AuthorizesRequests` — tanpa trait ini semua `$this->authorize()` 500; (2) `AuthServiceProvider` kini terdaftar di `bootstrap/providers.php` dengan mapping eksplisit, class fiktif `App\Models\Kasir` dihapus; (3) `RolePermissionSeeder` — Superadmin dapat seluruh permission, permission dicabut (`manage-branches`, `manage-users`) dihapus, duplikat dibersihkan; (4) route create/hapus cabang & kasir di area Owner jadi closure `abort(403)` (provisioning hanya lewat Superadmin); (5) `@can` di Blade WAJIB pakai nama **method policy** (`resetPassword`) bila bergantung objek — nama permission akan dilewati `Gate::before` Spatie sehingga tenancy check terlewat. Lihat `PERMISSIONS.md` bagian 5–6 |

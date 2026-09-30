@@ -4,9 +4,7 @@
 <x-card>
     <div class="flex items-center justify-between mb-4">
         <h2 class="text-lg font-semibold">Daftar Kasir</h2>
-        @can('create-kasir')
-            <a href="{{ route('app.kasir.create') }}"><x-button>Tambah Kasir</x-button></a>
-        @endcan
+        <p class="text-xs text-muted-foreground">Penambahan akun Kasir dilakukan oleh Superadmin.</p>
     </div>
     <div class="overflow-x-auto">
         <table class="w-full text-sm">
@@ -34,7 +32,7 @@
                         </td>
                         <td class="px-4 py-3">
                             <a href="{{ route('app.kasir.edit', $user) }}"><x-button variant="secondary" size="sm">Edit</x-button></a>
-                            @can('reset-kasir-password', $user)
+                            @can('resetPassword', $user)
                                 <a href="{{ route('app.kasir.reset-password.form', $user) }}"><x-button variant="warning" size="sm">Reset Password</x-button></a>
                             @endcan
                         </td>

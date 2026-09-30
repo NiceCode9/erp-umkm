@@ -4,7 +4,6 @@
 <x-card>
     <div class="flex items-center justify-between mb-4">
         <h2 class="text-lg font-semibold">Daftar Cabang</h2>
-        <a href="{{ route('app.branches.create') }}"><x-button>Tambah Cabang</x-button></a>
     </div>
     <div class="overflow-x-auto">
         <table class="w-full text-sm">

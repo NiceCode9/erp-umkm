@@ -71,17 +71,26 @@ Route::prefix('app')
 
         Route::middleware(['role:Owner'])->group(function () {
             Route::get('branches', [BranchController::class, 'index'])->name('branches.index')->middleware('can:view-branches');
-            Route::get('branches/create', [BranchController::class, 'create'])->name('branches.create')->middleware('can:create-branches');
-            Route::post('branches', [BranchController::class, 'store'])->name('branches.store')->middleware('can:create-branches');
+
+            // Provisioning cabang & akun Kasir HANYA lewat Superadmin di
+            // /superadmin/businesses/{business}/... (lihat PERMISSIONS.md, keputusan final).
+            // Route di bawah sengaja dipelihara agar akses langsung Owner memberi 403
+            // yang jelas, bukan 404 yang membingungkan. Jangan diubah menjadi form create.
+            Route::get('branches/create', fn () => abort(403, 'Penambahan cabang hanya dapat dilakukan oleh Superadmin.'))->name('branches.create');
+            Route::post('branches', fn () => abort(403, 'Penambahan cabang hanya dapat dilakukan oleh Superadmin.'))->name('branches.store');
+            Route::delete('branches/{branch}', fn () => abort(403, 'Penghapusan cabang hanya dapat dilakukan oleh Superadmin.'))->name('branches.destroy');
+
             Route::get('branches/{branch}/edit', [BranchController::class, 'edit'])->name('branches.edit')->middleware('can:edit-branches');
             Route::put('branches/{branch}', [BranchController::class, 'update'])->name('branches.update')->middleware('can:edit-branches');
-            Route::delete('branches/{branch}', [BranchController::class, 'destroy'])->name('branches.destroy')->middleware('can:delete-branches');
             Route::get('branches/{branch}/settings', [BranchSettingController::class, 'edit'])->name('branches.settings.edit');
             Route::put('branches/{branch}/settings', [BranchSettingController::class, 'update'])->name('branches.settings.update');
 
-            Route::resource('kasir', UserController::class)->only(['index', 'show', 'edit', 'update']);
-            Route::get('kasir/create', [UserController::class, 'create'])->name('kasir.create')->middleware('can:create-kasir');
-            Route::post('kasir', [UserController::class, 'store'])->name('kasir.store')->middleware('can:create-kasir');
+            // 'show' sengaja TIDAK didaftarkan: tidak ada halaman detail Kasir
+            // dan UserController tidak memiliki method show(). Mendaftarkannya
+            // membuat GET /app/kasir/{kasir} berakhir 500.
+            Route::resource('kasir', UserController::class)->only(['index', 'edit', 'update']);
+            Route::get('kasir/create', fn () => abort(403, 'Pembuatan akun Kasir hanya dapat dilakukan oleh Superadmin.'))->name('kasir.create');
+            Route::post('kasir', fn () => abort(403, 'Pembuatan akun Kasir hanya dapat dilakukan oleh Superadmin.'))->name('kasir.store');
             Route::get('kasir/{kasir}/reset-password', [UserController::class, 'resetPasswordForm'])->name('kasir.reset-password.form')->middleware('can:reset-kasir-password');
             Route::post('kasir/{kasir}/reset-password', [UserController::class, 'resetPassword'])->name('kasir.reset-password')->middleware('can:reset-kasir-password');
 

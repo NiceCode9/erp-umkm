@@ -68,11 +68,24 @@ function something()
 |
 */
 
+/**
+ * Jalankan RolePermissionSeeder sungguhan supaya test ikut memvalidasi isi
+ * seeder (regression guard: pernah Superadmin hanya dapat 2 permission).
+ *
+ * Sengaja memanggil run() langsung, bukan $this->seed(), karena helper ini
+ * juga dipanggil dari dalam helper lain (bukan closure test) sehingga tidak
+ * punya $this.
+ */
+function seedPermissions(): void
+{
+    (new \Database\Seeders\RolePermissionSeeder)->run();
+
+    app()->make(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+}
+
 function makeOwner(?Business $business = null): User
 {
-    foreach (['Superadmin', 'Owner', 'Kasir'] as $role) {
-        Role::findOrCreate($role, 'web');
-    }
+    seedPermissions();
 
     $business ??= Business::factory()->create(['is_active' => true]);
 
@@ -154,4 +167,33 @@ function makeProductionSetup(
     ]);
 
     return compact('product', 'recipe', 'batch');
+}
+
+function makeSuperadmin(): User
+{
+    seedPermissions();
+
+    $user = User::factory()->create([
+        'business_id' => null,
+        'is_active' => true,
+    ]);
+    $user->assignRole('Superadmin');
+
+    return $user;
+}
+
+function makeKasir(Business $business, ?Branch $branch = null, string $name = 'Kasir Uji'): User
+{
+    seedPermissions();
+
+    $branch ??= makeBranchFor($business);
+
+    $kasir = User::factory()->create([
+        'business_id' => $business->id,
+        'branch_id' => $branch->id,
+        'is_active' => true,
+    ]);
+    $kasir->assignRole('Kasir');
+
+    return $kasir;
 }

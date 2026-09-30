@@ -23,50 +23,18 @@ class UserController extends Controller
         return view('app.owner.kasir.index', compact('kasir'));
     }
 
-    public function create(): View
-    {
-        $branches = Branch::where('business_id', auth()->user()->business_id)
-            ->where('is_active', true)
-            ->get();
-
-        return view('app.owner.kasir.create', compact('branches'));
-    }
-
-    public function store(Request $request): RedirectResponse
-    {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|lowercase|email|max:255|unique:users,email',
-            'password' => 'required|string|min:8',
-            'branch_id' => 'required|exists:branches,id',
-        ]);
-
-        // Verify branch belongs to Owner's business
-        $branch = Branch::where('id', $validated['branch_id'])
-            ->where('business_id', auth()->user()->business_id)
-            ->firstOrFail();
-
-        $user = User::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
-            'business_id' => auth()->user()->business_id,
-            'branch_id' => $branch->id,
-            'is_active' => true,
-        ]);
-
-        $user->assignRole('Kasir');
-
-        return redirect()
-            ->route('app.kasir.index')
-            ->with('success', "Kasir \"{$user->name}\" berhasil ditambahkan.");
-    }
-
+    /**
+     * Owner hanya boleh MENGUBAH akun Kasir yang sudah ada di business-nya sendiri.
+     *
+     * Catatan desain: tabel `users` sengaja TIDAK memakai global scope generik
+     * (lihat AGENTS.md bagian 2.1 — akan menyebabkan infinite recursion saat
+     * resolve Auth::user()). Karena itu route model binding `{kasir}` TIDAK otomatis
+     * ter-scope, dan pengecekan kepemilikan tenant dilakukan eksplisit di dalam
+     * App\Policies\UserPolicy.
+     */
     public function edit(User $kasir): View
     {
-        if ($kasir->business_id !== auth()->user()->business_id) {
-            abort(403);
-        }
+        $this->authorize('update', $kasir);
 
         $branches = Branch::where('business_id', auth()->user()->business_id)
             ->where('is_active', true)
@@ -77,9 +45,7 @@ class UserController extends Controller
 
     public function update(Request $request, User $kasir): RedirectResponse
     {
-        if ($kasir->business_id !== auth()->user()->business_id) {
-            abort(403);
-        }
+        $this->authorize('update', $kasir);
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -88,7 +54,7 @@ class UserController extends Controller
             'is_active' => 'boolean',
         ]);
 
-        // Verify branch belongs to Owner's business
+        // Pastikan cabang tujuan benar-benar milik business Owner.
         Branch::where('id', $validated['branch_id'])
             ->where('business_id', auth()->user()->business_id)
             ->firstOrFail();
@@ -102,10 +68,6 @@ class UserController extends Controller
 
     public function resetPasswordForm(User $kasir): View
     {
-        if ($kasir->business_id !== auth()->user()->business_id) {
-            abort(403);
-        }
-
         $this->authorize('resetPassword', $kasir);
 
         return view('app.owner.kasir.reset-password', compact('kasir'));
@@ -113,10 +75,6 @@ class UserController extends Controller
 
     public function resetPassword(Request $request, User $kasir): RedirectResponse
     {
-        if ($kasir->business_id !== auth()->user()->business_id) {
-            abort(403);
-        }
-
         $this->authorize('resetPassword', $kasir);
 
         $validated = $request->validate([

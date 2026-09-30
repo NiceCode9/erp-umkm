@@ -80,6 +80,46 @@ Dikelola menggunakan `spatie/laravel-permission`. Tiga role utama: **Superadmin*
 
 ## 4. Implementasi Teknis (Referensi untuk AGENTS.md)
 
-- Permission granular sebaiknya dipetakan 1:1 dengan baris tabel di atas, misal: `manage-purchases`, `view-own-sales`, `view-all-sales`, `manage-production`, dst.
+- Permission granular dipetakan 1:1 dengan baris tabel di atas, misal: `manage-purchases`, `view-own-sales`, `view-all-sales`, `manage-production`, dst. Daftar kanonik dan pemetaan ke route tersedia di `database/seeders/RolePermissionSeeder.php`.
 - Role `Superadmin`, `Owner`, `Kasir` di-assign permission-permission di atas melalui seeder (`RolePermissionSeeder`).
+  - **Superadmin mendapat seluruh permission.** Area `/superadmin/*` dijaga middleware `role:Superadmin`, jadi permission adalah lapisan kedua — disimpan lengkap agar fitur baru tidak ikut 403.
+  - **Owner sengaja TIDAK mendapat** `create-branches`, `create-kasir`, `delete-branches` (keputusan final bagian 3.1).
+  - **Kasir sengaja TIDAK mendapat** `view-branches` — route `app.branches.*` berada di group `role:Owner` sehingga tidak pernah bisa diakses Kasir. Grant ini ditahan sampai fitur "lihat cabang sendiri" benar-benar ada.
+- Permission yang dicabut (`manage-branches`, `manage-users`) dihapus dari tabel `permissions` oleh seeder lewat konstanta `RETIRED_PERMISSIONS`. **Jangan menambah permission yang tidak dipakai route/controller mana pun** — itu dead grant yang tidak menambah keamanan, hanya surface of confusion.
 - Middleware/gate tambahan tetap diperlukan untuk validasi kepemilikan data (mis. Kasir hanya bisa lihat `sales` dengan `user_id = auth()->id()`), karena permission spatie hanya mengontrol akses fitur, bukan filter baris data.
+
+## 5. Nama Permission Kanonik
+
+Naming convention: **jamak** (`create-branches`, bukan `create-branch`), konsisten dengan seluruh permission lain di project. Modul: `businesses`, `branches`, `kasir`, `raw-materials`, `purchases`, `production`, `products`, `sales`, `shifts`, `shipments`, `reports`.
+
+| Permission | Melayani route / aksi |
+|---|---|
+| `manage-businesses` | `/superadmin/businesses` (CRUD + aktivasi/nonaktivasi) |
+| `view-superadmin-dashboard` | `/superadmin/dashboard` |
+| `view-branches` | `GET /app/branches` (Owner) |
+| `edit-branches` | `GET|PUT /app/branches/{branch}` (Owner) |
+| `create-branches` | Hanya `/superadmin/businesses/{business}/branches` — route `/app/branches/create` mengembalikan **403** |
+| `delete-branches` | Hanya Superadmin — route `DELETE /app/branches/{branch}` mengembalikan **403** |
+| `edit-kasir` | `GET|PUT /app/kasir/{kasir}` (Owner) |
+| `manage-kasir` | Menghapus/menonaktifkan Kasir (dipakai `UserPolicy`) |
+| `reset-kasir-password` | `GET|POST /app/kasir/{kasir}/reset-password` (Owner) |
+| `create-kasir` | Hanya `/superadmin/businesses/{business}/kasir` — route `/app/kasir/create` mengembalikan **403** |
+| `edit-own-profile` | `/profile` |
+
+### Route yang sengaja mengembalikan 403
+
+Empat route berikut **dipertahankan** (bukan dihapus) agar akses langsung Owner menghasilkan 403 yang jelas, bukan 404 yang membingungkan. Semuanya adalah closure `abort(403)`, bukan form create:
+
+- `GET /app/branches/create` dan `POST /app/branches`
+- `GET /app/kasir/create` dan `POST /app/kasir`
+- `DELETE /app/branches/{branch}`
+
+## 6. Catatan Penting tentang `@can` di Blade
+
+`spatie/laravel-permission` mendaftarkan `Gate::before` yang mengembalikan `true` **sebelum** policy dieksekusi. Akibatnya:
+
+- `@can('edit-branches')` → dicek sebagai **permission**, policy tidak pernah dipanggil. Ini benar untuk route-level.
+- `@can('resetPassword', $user)` → nama ability **bukan** nama permission, sehingga `Gate::before` mengembalikan `null` lalu **policy dieksekusi** → `business_id` ikut diperiksa. Ini yang benar untuk keputusan yang melibatkan objek tertentu.
+- `@can('reset-kasir-password', $user)` → **JANGAN dipakai** untuk keputusan per-objek, karena tenancy check di `UserPolicy` akan dilewati.
+
+Aturan praktis: pakai nama **permission** untuk gate di level fitur/route, dan nama **method policy** (`viewAny`, `view`, `update`, `delete`, `resetPassword`) saat gate bergantung pada objek tertentu.
