@@ -73,20 +73,34 @@ class DashboardController extends Controller
             ->orderBy('halal_cert_expired_date')
             ->get();
 
-        // Outstanding utang piutang
+        // Outstanding utang piutang. Memakai formula resmi yang sama dengan
+        // DebtController & PurchaseService (BUSINESS-RULES.md bagian 5).
         $outstandingPurchases = Purchase::where('business_id', $businessId)
-            ->where('payment_status', '!=', 'paid')
-            ->with(['payments', 'returns'])
+            ->withSum(['payments as paid_amount'], 'amount')
+            ->withSum(['returns as returned_amount'], 'total_amount')
             ->orderBy('created_at')
             ->get()
             ->map(function ($p) {
-                $paid = (float) $p->payments->sum('amount');
-                $returned = (float) $p->returns->sum('total_amount');
-                $p->outstanding = max(0, (float) $p->total_amount - $paid - $returned);
+                $p->outstanding_amount = (float) $p->total_amount
+                    - (float) $p->paid_amount
+                    - (float) $p->returned_amount;
                 return $p;
             })
-            ->filter(fn ($p) => $p->outstanding > 0);
+            ->filter(fn ($p) => (float) $p->outstanding_amount > 0);
 
+        $creditPurchases = Purchase::where('business_id', $businessId)
+            ->withSum(['payments as paid_amount'], 'amount')
+            ->withSum(['returns as returned_amount'], 'total_amount')
+            ->get()
+            ->map(function ($p) {
+                $p->outstanding_amount = (float) $p->total_amount
+                    - (float) $p->paid_amount
+                    - (float) $p->returned_amount;
+                return $p;
+            })
+            ->filter(fn ($p) => (float) $p->outstanding_amount < 0);
+
+        // Outstanding piutang dari pembeli (meniru rumus yang sama).
         $outstandingSales = Sale::where('business_id', $businessId)
             ->where('payment_status', '!=', 'paid')
             ->with(['payments', 'returns'])
@@ -124,7 +138,7 @@ class DashboardController extends Controller
         return view('app.dashboard-owner', compact(
             'lowStockMaterials', 'halalExpiringSoon', 'halalExpired',
             'materialHalalExpiringSoon', 'materialHalalExpired',
-            'outstandingPurchases', 'outstandingSales',
+            'outstandingPurchases', 'creditPurchases', 'outstandingSales',
             'todayTotal', 'todayCount', 'todayAvg', 'chartDays'
         ));
     }

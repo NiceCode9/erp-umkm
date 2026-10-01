@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Laporan Utang &amp; Piutang</title>
+    <title>Laporan Utang Supplier</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: sans-serif; font-size: 12px; color: #1a1a1a; padding: 30px; }
@@ -22,64 +22,64 @@
         .section-title { font-size: 14px; font-weight: 600; margin: 18px 0 8px; padding-bottom: 4px; border-bottom: 1px solid #ddd; }
         .empty { text-align: center; color: #999; padding: 20px; }
         .page-break { page-break-before: always; }
+        tfoot td { background-color: #f7f7f7; font-weight: 700; }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <h1>Laporan Utang &amp; Piutang</h1>
+        <h1>Laporan Utang Supplier</h1>
         <p>
-            @if($dateFrom && $dateTo)
-                Periode: {{ \Carbon\Carbon::parse($dateFrom)->format('d/m/Y') }} — {{ \Carbon\Carbon::parse($dateTo)->format('d/m/Y') }}
-            @else
-                Semua Periode
-            @endif
+            {{ $businessName ?: '-' }}
+            @if(isset($generatedAt)) &mdash; Dibuat: {{ $generatedAt->format('d/m/Y H:i') }} @endif
         </p>
     </div>
 
-    {{-- ====== UTANG SUPPLIER ====== --}}
-    <div class="section-title">Utang ke Supplier</div>
+    {{-- ====== UTANG OUTSTANDING ====== --}}
+    <div class="section-title">Utang Outstanding</div>
 
     <div class="summary">
         <div class="summary-box">
-            <div class="label">Total Utang</div>
-            <div class="value">{{ format_currency($debtSummary['total'] ?? 0) }}</div>
+            <div class="label">Jumlah Transaksi</div>
+            <div class="value">{{ $rows->count() }}</div>
         </div>
         <div class="summary-box">
-            <div class="label">Sudah Dibayar</div>
-            <div class="value">{{ format_currency($debtSummary['paid'] ?? 0) }}</div>
+            <div class="label">Total Sisa Utang</div>
+            <div class="value">{{ format_currency($grandTotal) }}</div>
         </div>
         <div class="summary-box">
-            <div class="label">Sisa Belum Dibayar</div>
-            <div class="value">{{ format_currency($debtSummary['outstanding'] ?? 0) }}</div>
+            <div class="label">Total Kredit ke Supplier</div>
+            <div class="value">{{ format_currency($creditTotal) }}</div>
         </div>
     </div>
 
     <table>
         <thead>
             <tr>
+                <th>Invoice</th>
                 <th>Supplier</th>
-                <th>Invoice</th>
-                <th>Tanggal</th>
+                <th>Cabang</th>
                 <th class="text-right">Total</th>
                 <th class="text-right">Dibayar</th>
-                <th class="text-right">Sisa</th>
+                <th class="text-right">Retur</th>
+                <th class="text-right">Sisa Utang</th>
                 <th class="text-center">Status</th>
             </tr>
         </thead>
         <tbody>
-            @forelse($payables as $debt)
+            @forelse($rows as $p)
                 <tr>
-                    <td>{{ $debt->supplier->name ?? '-' }}</td>
-                    <td>{{ $debt->invoice_no }}</td>
-                    <td>{{ $debt->purchase_date?->format('d/m/Y') ?? '-' }}</td>
-                    <td class="text-right">{{ format_currency($debt->total_amount) }}</td>
-                    <td class="text-right">{{ format_currency($debt->paidAmount()) }}</td>
-                    <td class="text-right font-bold">{{ format_currency($debt->remainingAmount()) }}</td>
+                    <td>{{ $p->invoice_no }}</td>
+                    <td>{{ $p->supplier->name ?? '-' }}</td>
+                    <td>{{ $p->branch->name ?? '-' }}</td>
+                    <td class="text-right">{{ format_currency($p->total_amount) }}</td>
+                    <td class="text-right">{{ format_currency($p->paid_amount) }}</td>
+                    <td class="text-right">{{ format_currency($p->returned_amount) }}</td>
+                    <td class="text-right font-bold">{{ format_currency($p->outstanding) }}</td>
                     <td class="text-center">
-                        @if($debt->payment_status === 'paid')
+                        @if($p->payment_status === 'paid')
                             Lunas
-                        @elseif($debt->payment_status === 'partial')
+                        @elseif($p->payment_status === 'partial')
                             Sebagian
                         @else
                             Belum
@@ -88,69 +88,62 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="7" class="empty">Tidak ada utang ke supplier</td>
+                    <td colspan="8" class="empty">Tidak ada utang ke supplier</td>
                 </tr>
             @endforelse
         </tbody>
+        @if($rows->count())
+            <tfoot>
+                <tr>
+                    <td colspan="6" class="text-right">TOTAL</td>
+                    <td class="text-right">{{ format_currency($grandTotal) }}</td>
+                    <td></td>
+                </tr>
+            </tfoot>
+        @endif
     </table>
 
-    {{-- ====== PIUTANG PEMBELI ====== --}}
-    <div class="page-break"></div>
-    <div class="section-title">Piutang dari Pembeli</div>
+    {{-- ====== KREDIT KE SUPPLIER ====== --}}
+    @if($creditRows->count())
+        <div class="page-break"></div>
+        <div class="section-title">Kredit / Klaim ke Supplier</div>
+        <p style="font-size:11px;color:#666;margin-bottom:8px;">
+            Retur pembelian melebihi sisa utang, sehingga supplier owes kita.
+        </p>
 
-    <div class="summary">
-        <div class="summary-box">
-            <div class="label">Total Piutang</div>
-            <div class="value">{{ format_currency($receivableSummary['total'] ?? 0) }}</div>
-        </div>
-        <div class="summary-box">
-            <div class="label">Sudah Diterima</div>
-            <div class="value">{{ format_currency($receivableSummary['paid'] ?? 0) }}</div>
-        </div>
-        <div class="summary-box">
-            <div class="label">Sisa Belum Diterima</div>
-            <div class="value">{{ format_currency($receivableSummary['outstanding'] ?? 0) }}</div>
-        </div>
-    </div>
-
-    <table>
-        <thead>
-            <tr>
-                <th>Pelanggan</th>
-                <th>Invoice</th>
-                <th>Tanggal</th>
-                <th class="text-right">Total</th>
-                <th class="text-right">Dibayar</th>
-                <th class="text-right">Sisa</th>
-                <th class="text-center">Status</th>
-            </tr>
-        </thead>
-        <tbody>
-            @forelse($receivables as $r)
+        <table>
+            <thead>
                 <tr>
-                    <td>{{ $r->customer_name ?? '-' }}</td>
-                    <td>{{ $r->invoice_no }}</td>
-                    <td>{{ $r->sale_date?->format('d/m/Y') ?? '-' }}</td>
-                    <td class="text-right">{{ format_currency($r->total_amount) }}</td>
-                    <td class="text-right">{{ format_currency($r->paidAmount()) }}</td>
-                    <td class="text-right font-bold">{{ format_currency($r->remainingAmount()) }}</td>
-                    <td class="text-center">
-                        @if($r->payment_status === 'paid')
-                            Lunas
-                        @elseif($r->payment_status === 'partial')
-                            Sebagian
-                        @else
-                            Belum
-                        @endif
-                    </td>
+                    <th>Invoice</th>
+                    <th>Supplier</th>
+                    <th>Cabang</th>
+                    <th class="text-right">Total</th>
+                    <th class="text-right">Dibayar</th>
+                    <th class="text-right">Retur</th>
+                    <th class="text-right">Kredit</th>
                 </tr>
-            @empty
+            </thead>
+            <tbody>
+                @foreach($creditRows as $p)
+                    <tr>
+                        <td>{{ $p->invoice_no }}</td>
+                        <td>{{ $p->supplier->name ?? '-' }}</td>
+                        <td>{{ $p->branch->name ?? '-' }}</td>
+                        <td class="text-right">{{ format_currency($p->total_amount) }}</td>
+                        <td class="text-right">{{ format_currency($p->paid_amount) }}</td>
+                        <td class="text-right">{{ format_currency($p->returned_amount) }}</td>
+                        <td class="text-right font-bold">{{ format_currency(abs($p->outstanding)) }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+            <tfoot>
                 <tr>
-                    <td colspan="7" class="empty">Tidak ada piutang dari pembeli</td>
+                    <td colspan="6" class="text-right">TOTAL KREDIT</td>
+                    <td class="text-right">{{ format_currency($creditTotal) }}</td>
                 </tr>
-            @endforelse
-        </tbody>
-    </table>
+            </tfoot>
+        </table>
+    @endif
 
 </body>
 </html>

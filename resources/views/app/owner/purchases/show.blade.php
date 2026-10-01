@@ -13,6 +13,7 @@
                 @switch($purchase->payment_status)
                     @case('paid')<x-badge variant="success">Lunas</x-badge>@break
                     @case('partial')<x-badge variant="warning">Sebagian</x-badge>@break
+                    @case('credit')<x-badge variant="danger">Kredit ke Supplier</x-badge>@break
                     @default<x-badge variant="danger">Belum Dibayar</x-badge>
                 @endswitch
             </div>
@@ -21,8 +22,25 @@
         <div class="grid grid-cols-2 gap-4 text-sm mb-4 p-4 bg-muted rounded-[var(--radius)]">
             <div><span class="text-muted-foreground">Supplier:</span> <strong>{{ $purchase->supplier->name }}</strong></div>
             <div><span class="text-muted-foreground">Cabang:</span> <strong>{{ $purchase->branch->name }}</strong></div>
+            <div><span class="text-muted-foreground">Subtotal:</span> <strong>{{ format_currency($purchase->subtotal) }}</strong></div>
+            <div><span class="text-muted-foreground">Diskon:</span> <strong>{{ format_currency($purchase->discount_amount) }}</strong>
+                @if($purchase->discount_type)<span class="text-muted-foreground">({{ $purchase->discount_type }} {{ $purchase->discount_value }})</span>@endif
+            </div>
+            <div><span class="text-muted-foreground">Pajak:</span> <strong>{{ format_currency($purchase->tax_amount) }}</strong>
+                @if($purchase->tax_percentage_applied)<span class="text-muted-foreground">({{ $purchase->tax_percentage_applied }}%)</span>@endif
+            </div>
             <div><span class="text-muted-foreground">Total:</span> <strong>{{ format_currency($purchase->total_amount) }}</strong></div>
-            <div><span class="text-muted-foreground">Sisa Utang:</span> <strong>{{ format_currency($purchase->remainingAmount()) }}</strong></div>
+            <div><span class="text-muted-foreground">Sudah dibayar:</span> <strong>{{ format_currency($purchase->paid_amount) }}</strong></div>
+            <div><span class="text-muted-foreground">Retur:</span> <strong>{{ format_currency($purchase->returned_amount) }}</strong></div>
+            <div class="col-span-2">
+                <span class="text-muted-foreground">Sisa Utang:</span>
+                <strong class="{{ $purchase->outstanding_amount < 0 ? 'text-destructive' : '' }}">
+                    {{ format_currency($purchase->outstanding_amount) }}
+                </strong>
+                @if($purchase->outstanding_amount < 0)
+                    <span class="text-destructive text-xs">(kredit — supplier owes kita)</span>
+                @endif
+            </div>
         </div>
 
         <h3 class="text-sm font-semibold text-foreground mb-2">Item Pembelian</h3>
@@ -64,7 +82,7 @@
                         <tr>
                             <td class="px-3 py-2">{{ $ret->return_date->format('d M Y') }}</td>
                             <td class="px-3 py-2">{{ $ret->reason ?? '-' }}</td>
-                            <td class="px-3 py-2 text-right">{{ format_currency($ret->items->sum('subtotal')) }}</td>
+                            <td class="px-3 py-2 text-right">{{ format_currency($ret->total_amount) }}</td>
                         </tr>
                     @endforeach
                 </tbody>

@@ -41,10 +41,10 @@ Dokumen ini merinci logika yang WAJIB diimplementasikan secara konsisten via Ser
 
 - **Berlaku untuk KEDUA jenis batch**: `raw_material_batches` (bahan baku) DAN `product_batches` (produk jadi) — bukan cuma bahan baku.
 - Konteks penerapan:
-  - Bahan baku: produksi (konsumsi resep), retur pembelian, stok opname yang mengoreksi ke bawah, distribusi antar cabang (bagian 7.1).
+  - Bahan baku: produksi (konsumsi resep), stok opname yang mengoreksi ke bawah, distribusi antar cabang (bagian 7.1). **Retur pembelian TIDAK memakai FEFO** — lihat bagian 5.1.
   - Produk jadi: **penjualan** (lihat bagian baru di dokumen Fase Penjualan — setiap `sale_item` mengambil dari `product_batches` mengikuti FEFO, tercatat di `sale_item_batches`), retur penjualan, stok opname, distribusi antar cabang (bagian 7.1).
 - Urutan pengambilan: `expired_date ASC NULLS LAST` — batch tanpa tanggal kedaluwarsa diambil paling akhir. Aturan ini SAMA PERSIS untuk kedua jenis batch.
-- Setiap pembelian bahan baku baru **selalu membuat batch baru** (tidak digabung ke batch lama), meskipun bahan baku dan supplier sama, kecuali `expired_date` dan `purchase_price` identik dengan batch yang sudah ada dan belum digunakan sama sekali.
+- Setiap pembelian bahan baku baru **selalu membuat batch baru** (tidak digabung ke batch lama), meskipun bahan baku dan supplier sama. Pengecualian penggabungan ketika `expired_date` dan `purchase_price` identik **belum diimplementasikan** — lihat catatan di `AGENTS.md` bagian 10.
 - Setiap production order **selalu membuat `product_batches` baru** (satu production order = satu batch produk baru), tidak pernah digabung ke batch produk lain meski produk & tanggal produksi sama — supaya `production_code` tetap 1:1 dengan asal produksinya untuk keperluan traceability.
 
 ## 2.1 Konsumsi FEFO saat Penjualan (Produk Jadi)
@@ -97,15 +97,58 @@ Dokumen ini merinci logika yang WAJIB diimplementasikan secara konsisten via Ser
 
 ## 5. Utang ke Supplier (dari Pembelian)
 
-- Setiap `purchase` dengan `payment_status != 'paid'` dianggap punya utang outstanding sebesar `total_amount - SUM(purchase_payments.amount)`.
-- Pembayaran cicilan dicatat di `purchase_payments`; setelah setiap pembayaran, `payment_status` di-update otomatis:
-  - `unpaid` jika belum ada pembayaran sama sekali.
-  - `partial` jika sudah ada pembayaran tapi belum lunas.
-  - `paid` jika total pembayaran ≥ `total_amount`.
+**FORMULA FINAL (satu-satunya — implementasi ada di `App\Services\PurchaseService`):**
+
+```
+utang_outstanding = total_amount
+                  - SUM(purchase_payments.amount)
+                  - SUM(purchase_returns.total_amount)
+```
+
+`outstanding` **BOLEH NEGATIF**. Nilai negatif berarti retur melebihi sisa utang → supplier owes kita. Nilai ini **TIDAK BOLEH di-clamp ke 0**: kalau di-clamp, kredit akibat retur hilang dari semua laporan (bug lama: retur tidak pernah mengurangi utang).
+
+Status `purchases.payment_status` dihitung ulang dari formula ini setiap ada `purchase_payments` **atau** `purchase_returns` baru:
+
+| Status | Kondisi | Arti |
+|---|---|---|
+| `unpaid` | `outstanding > 0` dan belum ada pembayaran | Utang penuh |
+| `partial` | `outstanding > 0` dan sudah ada sebagian pembayaran | Utang sebagian |
+| `paid` | `outstanding == 0` | Lunas |
+| `credit` | `outstanding < 0` | Retur melebihi sisa utang → supplier owes kita |
+
+- Pembayaran cicilan dicatat di `purchase_payments`. **Pembayaran melebihi sisa utang DITOLAK** (`ValidationException`), bukan diterima lalu disembunyikan.
+- Halaman Utang Supplier (`/app/debts`) menampilkan **dua section terpisah**: "Utang Outstanding" (`outstanding > 0`) dan "Kredit / Klaim ke Supplier" (`outstanding < 0`). Keduanya urut `created_at ASC` (paling lama belum dibayar dulu — lihat bagian 6).
+- Daftar utang **TIDAK** lagi memfilter berdasarkan `payment_status != 'paid'`, karena kolom itu tidak bisa merepresentasikan kredit. Filter dilakukan terhadap `outstanding` hasil perhitungan.
+
+### 5.1 Retur Pembelian (ke Supplier)
+
+Retur pembelian mengikuti struktur yang sama dengan retur penjualan (bagian 6.1), dengan perbedaan penting:
+
+- **TIDAK memakai FEFO.** Retur harus membalik **batch asal** yang benar-benar diterima, bukan mengambil batch berdasarkan urutan kedaluwarsa. (Bagian 2 sempat menyebut "retur pembelian" sebagai konteks FEFO — itu **SALAH** dan sudah dikoreksi di sini.)
+- `purchase_return_items.purchase_item_id` **wajib** terisi. Ini satu-satunya cara memvalidasi "retur tidak melebihi yang dibeli" dan melacak retur kembali ke baris pembelian asalnya.
+- **Harga retur SELALU diambil dari `PurchaseItem.unit_price`**, TIDAK pernah dari input user. Nilai `subtotal` (dan `purchase_returns.total_amount`) tidak boleh bisa dimanipulasi.
+- Validasi yang wajib lolos:
+  1. `purchase_item_id` milik pembelian yang sedang diretur;
+  2. batch milik `raw_material` yang sama **dan** cabang pembelian yang sama;
+  3. `quantity <= purchase_item.quantity - SUM(retur sebelumnya untuk item itu)`;
+  4. `quantity <= batch.quantity_remaining`.
+- Setelah retur tercatat, `payment_status` dihitung ulang (lihat tabel di atas). Retur inilah yang dapat menghasilkan status `credit`.
+
+### 5.2 Pembelian: Snapshot Diskon & Pajak
+
+`AGENTS.md` bagian 6 mewajibkan snapshot. `purchases` menyimpan `subtotal`, `discount_type`, `discount_value`, `discount_amount`, `tax_percentage_applied`, `tax_amount`, dan `total_amount` sebagai **snapshot**. Pajak diambil dari `branch_settings` saat transaksi dicatat dan tidak berubah lagi meski pengaturan cabang diubah belakangan. Pembelian tanpa diskon/pajak tetap menghasilkan `total_amount == subtotal` (perilaku lama dipertahankan).
+
+### 5.3 known limitation: `product_batches` belum punya `business_id`
+
+`raw_material_batches` sudah diberi `business_id` + global scope (lihat bagian 5.4). **`product_batches` belum** — masih relies on scoping implisit lewat `product_id`. Ini lubang cross-tenant yang sama di jalur penjualan. **RISIKO YANG DIKETAHUI, belum ditutup.** Lihat catatan di `AGENTS.md` bagian 10.
+
+### 5.4 Isolasi `raw_material_batches`
+
+Table ini memegang seluruh stok bahan baku dan sekarang memiliki `business_id` (backfill dari `raw_materials.business_id`) plus global scope `BelongsToBusiness`. `business_id` otomatis diturunkan dari `raw_material` bila tidak diisi eksplisit, supaya aman juga untuk seeder, artisan command, dan queue job yang tidak punya `auth()`.
 
 ## 6. Piutang dari Pembeli (dari Penjualan)
 
-- Berlaku logika yang sama seperti utang supplier, tapi pada tabel `sales` dan `sale_payments`.
+- Berlaku logika yang sama seperti utang supplier (bagian 5), tapi pada tabel `sales` dan `sale_payments`.
 - **Piutang outstanding (formula final, memperhitungkan retur):**
 
   ```

@@ -35,6 +35,41 @@
                 </div>
             </div>
 
+            <div class="border-t border-border pt-4 mb-6">
+                <h3 class="text-sm font-semibold text-foreground mb-3">Diskon &amp; Pajak (opsional)</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-foreground mb-1">Tipe Diskon</label>
+                        <select name="discount_type" class="block w-full border border-input rounded-[var(--radius)] px-3 py-2 text-foreground bg-background focus:ring-2 focus:ring-ring">
+                            <option value="">Tanpa diskon</option>
+                            <option value="nominal" @selected(old('discount_type') === 'nominal')>Nominal (Rp)</option>
+                            <option value="percent" @selected(old('discount_type') === 'percent')>Persentase (%)</option>
+                        </select>
+                        @error('discount_type')<p class="text-sm text-destructive mt-1">{{ $message }}</p>@enderror
+                    </div>
+                    <x-input label="Nilai Diskon" name="discount_value" type="number" step="0.01" min="0" value="{{ old('discount_value') }}" />
+                    <div>
+                        <label class="block text-sm font-medium text-foreground mb-1">Pajak</label>
+                        @php $selectedBranch = old('branch_id') ?: ($branches->first()?->id); @endphp
+                        @php $bs = $branchSettings->get($selectedBranch); @endphp
+                        @if($bs && $bs->tax_enabled)
+                            <div class="px-3 py-2 bg-muted rounded-[var(--radius)] text-sm">
+                                {{ rtrim(rtrim(number_format((float) $bs->tax_percentage, 2, ',', '.'), '0'), ',') }}%
+                                <span class="text-muted-foreground">(dari pengaturan cabang)</span>
+                            </div>
+                        @else
+                            <div class="px-3 py-2 bg-muted rounded-[var(--radius)] text-sm text-muted-foreground">
+                                Nonaktif untuk cabang ini
+                            </div>
+                        @endif
+                    </div>
+                </div>
+                <p class="text-xs text-muted-foreground mt-2">
+                    Diskon &amp; pajak disimpan sebagai snapshot sehingga riwayat lama tidak berubah
+                    bila pengaturan cabang diubah nanti.
+                </p>
+            </div>
+
             <h3 class="text-md font-semibold text-foreground mb-3 pb-2 border-b border-border">Item Pembelian</h3>
 
             <div x-data="{

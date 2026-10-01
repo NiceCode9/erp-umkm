@@ -18,10 +18,12 @@ class PurchaseReturn extends Model
         'user_id',
         'return_date',
         'reason',
+        'total_amount',
     ];
 
     protected $casts = [
         'return_date' => 'date',
+        'total_amount' => 'decimal:2',
     ];
 
     public function purchase(): BelongsTo
@@ -32,6 +34,11 @@ class PurchaseReturn extends Model
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 
     public function items(): HasMany

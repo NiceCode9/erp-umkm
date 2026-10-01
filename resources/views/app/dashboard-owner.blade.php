@@ -38,7 +38,7 @@
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-muted-foreground text-sm mb-1">Total Utang Supplier</p>
-                    <p class="text-2xl font-bold text-warning">{{ format_currency($outstandingPurchases->sum('outstanding')) }}</p>
+                    <p class="text-2xl font-bold text-warning">{{ format_currency($outstandingPurchases->sum('outstanding_amount')) }}</p>
                 </div>
                 <div class="text-warning text-3xl opacity-20">
                     <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -177,11 +177,29 @@
                 @foreach($outstandingPurchases->take(5) as $p)
                     <div class="flex justify-between items-center text-sm p-2 bg-warning/5 rounded-[var(--radius)]">
                         <span class="font-medium text-foreground">{{ $p->supplier->name ?? '-' }} — {{ $p->invoice_no }}</span>
-                        <span class="text-warning font-semibold">{{ format_currency($p->outstanding) }}</span>
+                        <span class="text-warning font-semibold">{{ format_currency($p->outstanding_amount) }}</span>
                     </div>
                 @endforeach
                 @if($outstandingPurchases->count() > 5)
                     <a href="{{ route('app.debts.index') }}" class="text-xs text-secondary hover:text-secondary/80 block text-center">+ {{ $outstandingPurchases->count() - 5 }} lainnya</a>
+                @endif
+            </div>
+        </x-card>
+    @endif
+
+    @if(isset($creditPurchases) && $creditPurchases->count())
+        <x-card class="mb-6 border border-destructive/30">
+            <h2 class="text-lg font-semibold text-destructive mb-1">Kredit ke Supplier</h2>
+            <p class="text-xs text-muted-foreground mb-3">Retur pembelian melebihi sisa utang — supplier owes kita.</p>
+            <div class="space-y-2">
+                @foreach($creditPurchases->take(5) as $p)
+                    <div class="flex justify-between items-center text-sm p-2 bg-destructive/5 rounded-[var(--radius)]">
+                        <span class="font-medium text-foreground">{{ $p->supplier->name ?? '-' }} - {{ $p->invoice_no }}</span>
+                        <span class="text-destructive font-semibold">{{ format_currency(abs($p->outstanding_amount)) }}</span>
+                    </div>
+                @endforeach
+                @if($creditPurchases->count() > 5)
+                    <a href="{{ route('app.debts.index') }}" class="text-xs text-secondary hover:text-secondary/80 block text-center">+ {{ $creditPurchases->count() - 5 }} lainnya</a>
                 @endif
             </div>
         </x-card>

@@ -4,11 +4,13 @@ namespace App\Providers;
 
 use App\Models\Branch;
 use App\Models\Product;
+use App\Models\Purchase;
 use App\Models\RawMaterial;
 use App\Models\StockMovement;
 use App\Models\User;
 use App\Policies\BranchPolicy;
 use App\Policies\ProductPolicy;
+use App\Policies\PurchasePolicy;
 use App\Policies\RawMaterialPolicy;
 use App\Policies\StockMovementPolicy;
 use App\Policies\UserPolicy;
@@ -35,6 +37,7 @@ class AuthServiceProvider extends ServiceProvider
         User::class => UserPolicy::class,
         RawMaterial::class => RawMaterialPolicy::class,
         Product::class => ProductPolicy::class,
+        Purchase::class => PurchasePolicy::class,
         StockMovement::class => StockMovementPolicy::class,
     ];
 

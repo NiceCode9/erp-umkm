@@ -9,6 +9,7 @@ class PurchaseReturnItem extends Model
 {
     protected $fillable = [
         'purchase_return_id',
+        'purchase_item_id',
         'raw_material_batch_id',
         'quantity',
         'unit_price',
@@ -24,6 +25,11 @@ class PurchaseReturnItem extends Model
     public function purchaseReturn(): BelongsTo
     {
         return $this->belongsTo(PurchaseReturn::class);
+    }
+
+    public function purchaseItem(): BelongsTo
+    {
+        return $this->belongsTo(PurchaseItem::class);
     }
 
     public function rawMaterialBatch(): BelongsTo

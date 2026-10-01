@@ -106,13 +106,20 @@ Route::prefix('app')
             Route::resource('suppliers', SupplierController::class);
             Route::resource('customers', CustomerController::class);
 
-            Route::resource('purchases', PurchaseController::class)->except(['edit', 'update', 'destroy']);
-            Route::get('purchases/{purchase}/pay', [PurchaseController::class, 'payForm'])->name('purchases.pay');
-            Route::post('purchases/{purchase}/pay', [PurchaseController::class, 'payStore'])->name('purchases.pay.store');
-            Route::get('purchases/{purchase}/return', [PurchaseController::class, 'returnForm'])->name('purchases.return.form');
-            Route::post('purchases/{purchase}/return', [PurchaseController::class, 'returnStore'])->name('purchases.return.store');
+            // Pembelian & utang supplier.
+            // Gate per-OBJEK (pay, returnPurchase) memakai PurchasePolicy agar
+            // pengecekan business_id ikut jalan. Gate level-FITUR memakai nama
+            // permission langsung, karena `can:xyz` tanpa argumen model tidak
+            // bisa menemukan policy (Laravel hanya menebak policy dari argumen).
+            Route::resource('purchases', PurchaseController::class)->except(['edit', 'update', 'destroy'])
+                ->middleware(['can:view-purchases']);
+            Route::get('purchases/create', [PurchaseController::class, 'create'])->name('purchases.create')->middleware('can:manage-purchases');
+            Route::get('purchases/{purchase}/pay', [PurchaseController::class, 'payForm'])->name('purchases.pay')->middleware('can:pay,purchase');
+            Route::post('purchases/{purchase}/pay', [PurchaseController::class, 'payStore'])->name('purchases.pay.store')->middleware('can:pay,purchase');
+            Route::get('purchases/{purchase}/return', [PurchaseController::class, 'returnForm'])->name('purchases.return.form')->middleware('can:returnPurchase,purchase');
+            Route::post('purchases/{purchase}/return', [PurchaseController::class, 'returnStore'])->name('purchases.return.store')->middleware('can:returnPurchase,purchase');
 
-            Route::get('debts', [DebtController::class, 'index'])->name('debts.index');
+            Route::get('debts', [DebtController::class, 'index'])->name('debts.index')->middleware('can:manage-supplier-debts');
 
             Route::get('stock-movements', [StockMovementController::class, 'index'])->name('stock-movements.index');
 

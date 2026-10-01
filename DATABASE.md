@@ -74,6 +74,7 @@ Role (Superadmin/Owner/Kasir) dikelola via `spatie/laravel-permission` (tabel `r
 | Kolom | Tipe | Keterangan |
 |---|---|---|
 | id | bigint PK | |
+| business_id | FK businesses | Wajib ada. Otomatis diturunkan dari `raw_materials.business_id` bila tidak diisi, agar aman untuk seeder/job tanpa `auth()` |
 | raw_material_id | FK raw_materials | |
 | branch_id | FK branches | Stok per cabang, tidak tercampur |
 | batch_no | string | |
@@ -181,8 +182,14 @@ Role (Superadmin/Owner/Kasir) dikelola via `spatie/laravel-permission` (tabel `r
 | user_id | FK users | Owner (pembelian hanya oleh Owner) |
 | invoice_no | string | |
 | purchase_date | date | |
-| total_amount | decimal | |
-| payment_status | enum(`unpaid`,`partial`,`paid`) | |
+| subtotal | decimal | Snapshot jumlah sebelum diskon & pajak |
+| discount_type | enum(`nominal`,`percent`), nullable | Snapshot tipe diskon |
+| discount_value | decimal, nullable | Snapshot nilai diskon |
+| discount_amount | decimal | Snapshot besaran diskon dalam rupiah |
+| tax_percentage_applied | decimal, nullable | Snapshot persentase pajak dari `branch_settings` |
+| tax_amount | decimal | Snapshot besaran pajak dalam rupiah |
+| total_amount | decimal | Snapshot total akhir, immutable setelah transaksi dibuat |
+| payment_status | enum(`unpaid`,`partial`,`paid`,`credit`) | `credit` = retur melebihi sisa utang (supplier owes kita). Dihitung dari formula di `BUSINESS-RULES.md` bagian 5 |
 
 ### `purchase_items`
 | Kolom | Tipe | Keterangan |
@@ -191,7 +198,7 @@ Role (Superadmin/Owner/Kasir) dikelola via `spatie/laravel-permission` (tabel `r
 | purchase_id | FK purchases | |
 | raw_material_id | FK raw_materials | |
 | quantity | decimal | |
-| unit_price | decimal | |
+| unit_price | decimal | Snapshot harga beli satuan |
 | subtotal | decimal | |
 | batch_no | string | Untuk generate `raw_material_batches` |
 | expired_date | date, nullable | |
@@ -201,12 +208,32 @@ Role (Superadmin/Owner/Kasir) dikelola via `spatie/laravel-permission` (tabel `r
 |---|---|---|
 | id | bigint PK | |
 | purchase_id | FK purchases | |
-| amount | decimal | |
+| amount | decimal | Ditolak server bila melebihi sisa utang |
 | paid_at | date | |
 | method | string | |
 
-### `purchase_returns` & `purchase_return_items`
-Struktur serupa `purchases`/`purchase_items`, mereferensikan `purchase_id` asal, dipakai untuk retur ke supplier.
+### `purchase_returns` (retur ke supplier)
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| id | bigint PK | |
+| purchase_id | FK purchases | |
+| business_id | FK businesses | |
+| branch_id | FK branches | Sama dengan cabang pembelian |
+| user_id | FK users | |
+| return_date | date | |
+| reason | text, nullable | |
+| total_amount | decimal | Jumlah retur. **WAJIB ada** — inilah yang dipakai formula utang supplier (`SUM(purchase_returns.total_amount)`). Tanpa kolom ini pengurangan utang diam-diam bernilai 0. |
+
+### `purchase_return_items`
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| id | bigint PK | |
+| purchase_return_id | FK purchase_returns | |
+| purchase_item_id | FK purchase_items, nullable | Baris pembelian asal. Dipakai validasi "retur ≤ yang dibeli" + jejak audit. |
+| raw_material_batch_id | FK raw_material_batches | Batch yang dikembalikan stoknya |
+| quantity | decimal | |
+| unit_price | decimal | Selalu disalin dari `purchase_items.unit_price`, TIDAK dari input user |
+| subtotal | decimal | |
 
 ## 5. Penjualan & Piutang dari Pembeli
 

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class PurchaseItem extends Model
 {
@@ -32,5 +33,24 @@ class PurchaseItem extends Model
     public function rawMaterial(): BelongsTo
     {
         return $this->belongsTo(RawMaterial::class);
+    }
+
+    public function returnItems(): HasMany
+    {
+        return $this->hasMany(PurchaseReturnItem::class, 'purchase_item_id');
+    }
+
+    /**
+     * Berapa quantity item ini yang sudah diretur ke supplier.
+     * Dipakai untuk menolak retur melebihi jumlah yang dibeli.
+     */
+    public function returnedQuantity(): float
+    {
+        return (float) $this->returnItems()->sum('quantity');
+    }
+
+    public function returnableQuantity(): float
+    {
+        return max(0.0, (float) $this->quantity - $this->returnedQuantity());
     }
 }

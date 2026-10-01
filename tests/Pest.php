@@ -3,10 +3,13 @@
 use App\Models\Branch;
 use App\Models\Business;
 use App\Models\Product;
+use App\Models\Purchase;
+use App\Models\PurchaseItem;
 use App\Models\RawMaterial;
 use App\Models\RawMaterialBatch;
 use App\Models\Recipe;
 use App\Models\RecipeItem;
+use App\Models\Supplier;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
@@ -166,7 +169,86 @@ function makeProductionSetup(
         'received_at' => now()->format('Y-m-d'),
     ]);
 
-    return compact('product', 'recipe', 'batch');
+    return [
+        'product' => $product,
+        'recipe' => $recipe,
+        'batch' => $batch,
+    ];
+}
+
+function makeSupplier(Business $business, string $name = 'Supplier Uji'): Supplier
+{
+    return Supplier::create([
+        'business_id' => $business->id,
+        'name' => $name,
+        'phone' => '08123456789',
+        'address' => 'Alamat supplier uji',
+    ]);
+}
+
+/**
+ * Buat satu pembelian lengkap: Purchase + PurchaseItem + RawMaterialBatch.
+ *
+ * Dibuat langsung lewat model (bukan lewat HTTP) supaya test bisa menyiapkan
+ * fixture tanpa bergantung pada form. Test yang perlu menguji
+ * PurchaseController::store() melakukan POST-nya sendiri di dalam closure.
+ *
+ * @return array{purchase: Purchase, item: PurchaseItem, batch: RawMaterialBatch}
+ */
+function makePurchase(
+    Business $business,
+    Branch $branch,
+    RawMaterial $rawMaterial,
+    float $quantity = 10.0,
+    float $unitPrice = 10000.0,
+    string $invoiceNo = 'INV-001',
+    ?string $expiredDate = null,
+    ?float $discountAmount = 0.0,
+): array {
+    $supplier = makeSupplier($business, "Supplier {$invoiceNo}");
+
+    $subtotal = round($quantity * $unitPrice, 2);
+    $total = round($subtotal - $discountAmount, 2);
+
+    $purchase = Purchase::create([
+        'business_id' => $business->id,
+        'branch_id' => $branch->id,
+        'supplier_id' => $supplier->id,
+        'user_id' => 1,
+        'invoice_no' => $invoiceNo,
+        'purchase_date' => now()->format('Y-m-d'),
+        'subtotal' => $subtotal,
+        'discount_type' => $discountAmount > 0 ? 'nominal' : null,
+        'discount_value' => $discountAmount > 0 ? $discountAmount : null,
+        'discount_amount' => $discountAmount,
+        'tax_percentage_applied' => null,
+        'tax_amount' => 0,
+        'total_amount' => $total,
+        'payment_status' => 'unpaid',
+    ]);
+
+    $item = PurchaseItem::create([
+        'purchase_id' => $purchase->id,
+        'raw_material_id' => $rawMaterial->id,
+        'quantity' => $quantity,
+        'unit_price' => $unitPrice,
+        'subtotal' => $subtotal,
+        'batch_no' => "BATCH-{$invoiceNo}",
+        'expired_date' => $expiredDate,
+    ]);
+
+    $batch = RawMaterialBatch::create([
+        'business_id' => $business->id,
+        'raw_material_id' => $rawMaterial->id,
+        'branch_id' => $branch->id,
+        'batch_no' => "BATCH-{$invoiceNo}",
+        'quantity_remaining' => $quantity,
+        'purchase_price' => $unitPrice,
+        'expired_date' => $expiredDate,
+        'received_at' => now()->format('Y-m-d'),
+    ]);
+
+    return compact('purchase', 'item', 'batch');
 }
 
 function makeSuperadmin(): User

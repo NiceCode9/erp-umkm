@@ -79,20 +79,35 @@ class ReportController extends Controller
     {
         $businessId = auth()->user()->business_id;
 
-        // Supplier debts (purchases unpaid/partial)
+        // Utang supplier — formula resmi yang sama dengan DebtController
+        // (BUSINESS-RULES.md bagian 5): total - payments - returns.
         $supplierDebts = Purchase::where('business_id', $businessId)
-            ->with(['supplier', 'branch', 'payments', 'returns'])
-            ->where('payment_status', '!=', 'paid')
-            ->latest()
+            ->with(['supplier', 'branch'])
+            ->withSum(['payments as paid_amount'], 'amount')
+            ->withSum(['returns as returned_amount'], 'total_amount')
+            ->orderBy('created_at')
             ->get()
             ->map(function ($p) {
-                $paid = (float) $p->payments->sum('amount');
-                $returned = (float) $p->returns->sum('total_amount');
-                $outstanding = (float) $p->total_amount - $paid - $returned;
-                $p->outstanding = max(0, $outstanding);
+                $p->outstanding = (float) $p->total_amount
+                    - (float) $p->paid_amount
+                    - (float) $p->returned_amount;
                 return $p;
             })
-            ->filter(fn ($p) => $p->outstanding > 0);
+            ->filter(fn ($p) => (float) $p->outstanding > 0);
+
+        // Kredit ke supplier: retur melebihi sisa utang (outstanding negatif).
+        $supplierCredits = Purchase::where('business_id', $businessId)
+            ->with(['supplier', 'branch'])
+            ->withSum(['payments as paid_amount'], 'amount')
+            ->withSum(['returns as returned_amount'], 'total_amount')
+            ->get()
+            ->map(function ($p) {
+                $p->outstanding = (float) $p->total_amount
+                    - (float) $p->paid_amount
+                    - (float) $p->returned_amount;
+                return $p;
+            })
+            ->filter(fn ($p) => (float) $p->outstanding < 0);
 
         // Customer debts (sales unpaid/partial)
         $customerDebts = Sale::where('business_id', $businessId)
@@ -109,7 +124,7 @@ class ReportController extends Controller
             })
             ->filter(fn ($s) => $s->outstanding > 0);
 
-        return view('app.owner.reports.debts', compact('supplierDebts', 'customerDebts'));
+        return view('app.owner.reports.debts', compact('supplierDebts', 'supplierCredits', 'customerDebts'));
     }
 
     public function stock(Request $request): View
@@ -206,14 +221,34 @@ class ReportController extends Controller
             $exportClass = new \App\Exports\SalesExport($data->get());
         } elseif ($type === 'supplier-debts') {
             $data = Purchase::where('business_id', $businessId)
-                ->with(['supplier', 'branch', 'payments', 'returns'])
-                ->where('payment_status', '!=', 'paid')->latest()
+                ->with(['supplier', 'branch'])
+                ->withSum(['payments as paid_amount'], 'amount')
+                ->withSum(['returns as returned_amount'], 'total_amount')
+                ->orderBy('created_at')
                 ->get()->map(function ($p) {
-                    $paid = (float) $p->payments->sum('amount');
-                    $returned = (float) $p->returns->sum('total_amount');
-                    $p->outstanding = max(0, (float) $p->total_amount - $paid - $returned);
+                    $p->outstanding = (float) $p->total_amount
+                        - (float) $p->paid_amount
+                        - (float) $p->returned_amount;
                     return $p;
-                })->filter(fn ($p) => $p->outstanding > 0);
+                })->filter(fn ($p) => (float) $p->outstanding > 0);
+
+            $pdfPayload = [
+                'rows' => $data,
+                'grandTotal' => (float) $data->sum('outstanding'),
+                'creditRows' => Purchase::where('business_id', $businessId)
+                    ->with(['supplier', 'branch'])
+                    ->withSum(['payments as paid_amount'], 'amount')
+                    ->withSum(['returns as returned_amount'], 'total_amount')
+                    ->get()->map(function ($p) {
+                        $p->outstanding = (float) $p->total_amount
+                            - (float) $p->paid_amount
+                            - (float) $p->returned_amount;
+                        return $p;
+                    })->filter(fn ($p) => (float) $p->outstanding < 0)->values(),
+                'creditTotal' => 0.0,
+            ];
+            $pdfPayload['creditTotal'] = (float) $pdfPayload['creditRows']->sum(fn ($p) => abs((float) $p->outstanding));
+
             $exportClass = new \App\Exports\SupplierDebtExport(collect($data));
         } elseif ($type === 'stock') {
             $itemType = $request->item_type ?: 'raw_material';
@@ -251,17 +286,26 @@ class ReportController extends Controller
         }
         
         if ($format === 'pdf') {
-            $view = "app.owner.reports.{$type}";
-            $data = match($type) {
-                'sales' => compact('sales') ?? [],
-                'debts' => ['supplierDebts' => collect(), 'customerDebts' => collect()],
-                'stock' => ['items' => collect(), 'branches' => collect(), 'itemType' => $request->item_type ?? 'raw_material'],
-                'production' => ['orders' => collect(), 'branches' => collect()],
-                default => [],
+            // View PDF dipetakan eksplisit per tipe. Sebelumnya match($type)
+            // memakai nilai yang tidak sama dengan nama view, sehingga
+            // 'supplier-debts' jatuh ke default => [] lalu loadView() mencari
+            // file pdf/supplier-debts.blade.php yang tidak ada -> HTTP 500.
+            $pdfView = match ($type) {
+                'supplier-debts' => 'app.owner.reports.pdf.debts',
+                default => null,
             };
-            
-            return \Barryvdh\DomPDF\Facade\Pdf::loadView("app.owner.reports.pdf.{$type}", array_merge($data, ['exportData' => $exportClass->collection()]))
-                ->download("{$fileName}.pdf");
+
+            if ($pdfView === null) {
+                abort(404, "Ekspor PDF untuk laporan '{$type}' belum didukung.");
+            }
+
+            return \Barryvdh\DomPDF\Facade\Pdf::loadView($pdfView, array_merge(
+                $pdfPayload ?? [],
+                [
+                    'businessName' => auth()->user()->business->name ?? '',
+                    'generatedAt' => now(),
+                ]
+            ))->download("{$fileName}.pdf");
         }
         
         return \Maatwebsite\Excel\Facades\Excel::download($exportClass, "{$fileName}.xlsx");

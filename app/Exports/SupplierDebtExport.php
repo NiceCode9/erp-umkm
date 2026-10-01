@@ -25,7 +25,11 @@ class SupplierDebtExport implements FromCollection, WithHeadings, WithMapping, W
 
     public function headings(): array
     {
-        return ['Invoice', 'Supplier', 'Cabang', 'Tanggal', 'Total', 'Sudah Dibayar', 'Sisa Utang', 'Status'];
+        // Kolom "Sudah Dibayar" & "Retur" sengaja dipisah. Sebelumnya keduanya
+        // dijumlahkan ke satu kolom sehingga nilai retur tersamar sebagai
+        // pembayaran (BUG: kolom berlabel "Sudah Dibayar" menampilkan
+        // payments + returns).
+        return ['Invoice', 'Supplier', 'Cabang', 'Tanggal', 'Total', 'Sudah Dibayar', 'Retur', 'Sisa Utang', 'Status'];
     }
 
     public function map($p): array
@@ -36,8 +40,9 @@ class SupplierDebtExport implements FromCollection, WithHeadings, WithMapping, W
             $p->branch->name ?? '-',
             $p->purchase_date?->format('d/m/Y'),
             (float) $p->total_amount,
-            (float) ($p->payments->sum('amount') + $p->returns->sum('total_amount')),
-            $p->outstanding ?? 0,
+            (float) ($p->paid_amount ?? 0),
+            (float) ($p->returned_amount ?? 0),
+            (float) ($p->outstanding ?? 0),
             $p->payment_status,
         ];
     }

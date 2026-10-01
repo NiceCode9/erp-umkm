@@ -33,6 +33,7 @@ class StockService
             $referenceType, $referenceId, $userId
         ) {
             $batch = RawMaterialBatch::create([
+                'business_id' => $businessId,
                 'raw_material_id' => $rawMaterialId,
                 'branch_id' => $branchId,
                 'batch_no' => $batchNo,
@@ -49,21 +50,41 @@ class StockService
         });
     }
 
+    /**
+     * Kurangi stok satu batch bahan baku secara atomik.
+     *
+     * Memakai lockForUpdate() supaya dua request bersamaan atas batch yang sama
+     * tidak bisa sama-sama lolos pengecekan stok lalu membuat quantity_remaining
+     * negatif (read-then-write tanpa lock = race: tanpa lock, kedua request
+     * membaca sisa yang sama lalu dua-duanya decrement).
+     *
+     * $businessId opsional: bila diisi, batch milik tenant lain akan ditolak.
+     * Global scope BelongsToBusiness pada RawMaterialBatch sudah menutup sebagian
+     * besar kasus; parameter ini menutup jalur yang sengaja melakukan unscoped
+     * query (mis. validasi silang saat proses retur).
+     */
     public function decreaseRawMaterialStockFromBatch(
         int $batchId, float $quantity,
         string $referenceType, int $referenceId, int $userId,
+        ?int $businessId = null,
     ): RawMaterialBatch {
-        return DB::transaction(function () use ($batchId, $quantity, $referenceType, $referenceId, $userId) {
-            $batch = RawMaterialBatch::findOrFail($batchId);
-            if ($batch->quantity_remaining < $quantity) {
+        return DB::transaction(function () use ($batchId, $quantity, $referenceType, $referenceId, $userId, $businessId) {
+            $batch = RawMaterialBatch::where('id', $batchId)->lockForUpdate()->firstOrFail();
+
+            if ($businessId !== null && (int) $batch->business_id !== $businessId) {
+                throw new \InvalidArgumentException('Batch tidak milik business ini.');
+            }
+
+            if ((float) $batch->quantity_remaining < $quantity) {
                 throw new \InvalidArgumentException(
                     "Stok batch {$batch->batch_no} tidak mencukupi. " .
                     "Sisa: {$batch->quantity_remaining}, diminta: {$quantity}"
                 );
             }
+
             $batch->decrement('quantity_remaining', $quantity);
 
-            $this->recordMovement($batch->rawMaterial->business_id, $batch->branch_id,
+            $this->recordMovement((int) $batch->business_id, $batch->branch_id,
                 'raw_material', $batch->raw_material_id, $batch->id,
                 'out', $quantity, $referenceType, $referenceId, $userId);
 
@@ -601,21 +622,6 @@ class StockService
     }
 
     /**
-     * Recalculate purchase payment_status (mirror of sale logic for consistency).
-     */
-    public function recalculatePurchasePaymentStatus(\App\Models\Purchase $purchase): string
-    {
-        $totalPaid = (float) PurchasePayment::where('purchase_id', $purchase->id)->sum('amount');
-        $outstanding = (float) $purchase->total_amount - $totalPaid;
-
-        $status = $outstanding <= 0 ? 'paid' : ($totalPaid > 0 ? 'partial' : 'unpaid');
-
-        $purchase->update(['payment_status' => $status]);
-
-        return $status;
-    }
-
-    /**
      * Execute stock distribution (change status to shipped):
      * deduct stock at origin using FEFO, record batch usage.
      *
@@ -778,6 +784,7 @@ class StockService
                         $sourceBatch = RawMaterialBatch::findOrFail($record->raw_material_batch_id);
 
                         $newBatch = RawMaterialBatch::create([
+                            'business_id' => $distribution->business_id,
                             'raw_material_id' => $item->item_id,
                             'branch_id' => $distribution->destination_branch_id,
                             'batch_no' => $sourceBatch->batch_no . '-DST',

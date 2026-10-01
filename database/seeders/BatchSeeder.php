@@ -69,8 +69,9 @@ class BatchSeeder extends Seeder
                 };
 
                 foreach ($batches as $b) {
-                    RawMaterialBatch::firstOrCreate(
+                    $batch = RawMaterialBatch::firstOrCreate(
                         [
+                            'business_id' => $business->id,
                             'raw_material_id' => $rm->id,
                             'branch_id' => $branch->id,
                             'batch_no' => $b['batch_no'] . '-' . $branch->id,

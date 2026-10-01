@@ -96,6 +96,8 @@ Detail matrix permission akan dijabarkan lengkap di `PERMISSIONS.md`.
 - Transaksi pembelian **dilakukan oleh Owner**.
 - Pembelian dapat menimbulkan **utang ke supplier** (lihat modul 6.9).
 - Setiap pembelian menambah stok bahan baku sesuai batch (untuk keperluan FEFO).
+- Pembelian mendukung **diskon** (nominal atau persentase) dan **pajak** yang diambil otomatis dari pengaturan per cabang. Keduanya disimpan sebagai **snapshot** di transaksi, sehingga riwayat lama tidak berubah bila pengaturan cabang diubah di kemudian hari.
+- **Retur pembelian ke supplier** dicatat dari halaman detail pembelian. Retur membalik batch asal yang benar-benar diterima (bukan memilih batch berdasarkan FEFO), mengurangi stok batch tersebut, dan otomatis mengurangi utang supplier. Bila retur melebihi sisa utang, hasilnya dicatat sebagai **kredit ke supplier** (supplier owes kita) dan ditampilkan di section terpisah — bukan dihilangkan.
 
 ### 6.5 Produksi
 - Satu produk dapat memiliki **banyak resep (BOM)** dengan skala berbeda (mis. "Resep 100 pcs" dan "Resep 500 pcs" untuk produk yang sama), masing-masing dengan daftar bahan baku & takarannya sendiri.
@@ -131,9 +133,9 @@ Detail matrix permission akan dijabarkan lengkap di `PERMISSIONS.md`.
 - Dukungan cetak struk (thermal printer) dan barcode/QR produk untuk mempercepat transaksi.
 
 ### 6.9 Utang Piutang
-- **Utang ke Supplier**: timbul dari transaksi pembelian bahan baku yang belum lunas.
+- **Utang ke Supplier**: timbul dari transaksi pembelian bahan baku yang belum lunas, **dikurangi nilai retur pembelian**. Bila retur melebihi sisa utang, muncul sebagai kredit ke supplier.
 - **Piutang dari Pembeli**: timbul dari transaksi penjualan yang belum lunas (kredit/tempo).
-- Pencatatan pembayaran cicilan/pelunasan.
+- Pencatatan pembayaran cicilan/pelunasan. Pembayaran yang melebihi sisa utang **ditolak** oleh sistem.
 - Notifikasi jatuh tempo utang-piutang.
 
 ### 6.10 Laporan Keuangan
