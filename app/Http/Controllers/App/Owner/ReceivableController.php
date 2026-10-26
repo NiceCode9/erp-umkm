@@ -22,7 +22,6 @@ class ReceivableController extends Controller
         $businessId = auth()->user()->business_id;
 
         $sales = Sale::where('business_id', $businessId)
-            ->where('payment_status', '!=', 'paid')
             ->with(['user', 'branch', 'payments', 'returns'])
             ->orderBy('created_at')
             ->get()
@@ -33,7 +32,9 @@ class ReceivableController extends Controller
                 $sale->total_returned = $totalReturned;
                 $sale->outstanding = (float) $sale->total_amount - $totalPaid - $totalReturned;
                 return $sale;
-            });
+            })
+            ->filter(fn ($sale) => (float) $sale->outstanding > 0)
+            ->values();
 
         return view('app.owner.receivables.index', compact('sales'));
     }
@@ -55,8 +56,13 @@ class ReceivableController extends Controller
     {
         if ($sale->business_id !== auth()->user()->business_id) abort(403);
 
+        $sale->load(['payments', 'returns']);
+        $totalPaid = (float) $sale->payments->sum('amount');
+        $totalReturned = (float) $sale->returns->sum('total_amount');
+        $outstanding = (float) $sale->total_amount - $totalPaid - $totalReturned;
+
         $validated = $request->validate([
-            'amount' => 'required|numeric|min:0.01',
+            'amount' => 'required|numeric|min:0.01|max:' . $outstanding,
             'paid_at' => 'required|date',
             'method' => 'required|string|max:50',
         ]);

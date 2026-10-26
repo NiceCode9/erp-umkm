@@ -62,11 +62,13 @@ class ShipmentController extends Controller
 
         Branch::where('id', $validated['branch_id'])->where('business_id', $businessId)->firstOrFail();
 
+        $sale = null;
         if ($validated['sale_id']) {
             $sale = Sale::where('id', $validated['sale_id'])->where('business_id', $businessId)->firstOrFail();
+            $sale->load('items');
         }
 
-        $shipment = DB::transaction(function () use ($validated, $businessId, $userId) {
+        $shipment = DB::transaction(function () use ($validated, $businessId, $userId, $sale) {
             $shipment = Shipment::create([
                 'business_id' => $businessId,
                 'branch_id' => $validated['branch_id'],
@@ -79,6 +81,16 @@ class ShipmentController extends Controller
             ]);
 
             foreach ($validated['items'] as $item) {
+                if ($sale && ! empty($item['sale_item_id'])) {
+                    $saleItem = $sale->items->firstWhere('id', (int) $item['sale_item_id']);
+                    if (! $saleItem || (int) $saleItem->product_id !== (int) $item['product_id']) {
+                        throw new \InvalidArgumentException('Item pengiriman tidak sesuai dengan transaksi penjualan.');
+                    }
+                    if ((float) $item['quantity'] > (float) $saleItem->quantity) {
+                        throw new \InvalidArgumentException('Qty pengiriman melebihi qty yang terjual.');
+                    }
+                }
+
                 ShipmentItem::create([
                     'shipment_id' => $shipment->id,
                     'product_id' => $item['product_id'],

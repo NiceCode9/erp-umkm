@@ -101,7 +101,7 @@ class SaleController extends Controller
                 'tax_percentage_applied' => null,
                 'tax_amount' => 0,
                 'total_amount' => 0,
-                'payment_status' => 'paid',
+                'payment_status' => $validated['payment_method'] === 'kredit' ? 'unpaid' : 'paid',
                 'payment_method' => $validated['payment_method'],
             ]);
 

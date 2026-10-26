@@ -23,7 +23,6 @@ class ReceivableController extends Controller
 
         $sales = Sale::where('business_id', $user->business_id)
             ->where('branch_id', $user->branch_id)
-            ->where('payment_status', '!=', 'paid')
             ->with(['user', 'payments', 'returns'])
             ->orderBy('created_at')
             ->get()
@@ -34,7 +33,9 @@ class ReceivableController extends Controller
                 $sale->total_returned = $totalReturned;
                 $sale->outstanding = (float) $sale->total_amount - $totalPaid - $totalReturned;
                 return $sale;
-            });
+            })
+            ->filter(fn ($sale) => (float) $sale->outstanding > 0)
+            ->values();
 
         return view('app.kasir.receivables.index', compact('sales'));
     }
@@ -58,8 +59,13 @@ class ReceivableController extends Controller
         $user = auth()->user();
         if ($sale->business_id !== $user->business_id || $sale->branch_id !== $user->branch_id) abort(403);
 
+        $sale->load(['payments', 'returns']);
+        $totalPaid = (float) $sale->payments->sum('amount');
+        $totalReturned = (float) $sale->returns->sum('total_amount');
+        $outstanding = (float) $sale->total_amount - $totalPaid - $totalReturned;
+
         $validated = $request->validate([
-            'amount' => 'required|numeric|min:0.01',
+            'amount' => 'required|numeric|min:0.01|max:' . $outstanding,
             'paid_at' => 'required|date',
             'method' => 'required|string|max:50',
         ]);

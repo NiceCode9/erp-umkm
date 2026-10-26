@@ -51,8 +51,10 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|lowercase|email|max:255|unique:users,email,' . $kasir->id,
             'branch_id' => 'required|exists:branches,id',
-            'is_active' => 'boolean',
+            'is_active' => 'nullable|boolean',
         ]);
+
+        $validated['is_active'] = $request->boolean('is_active');
 
         // Pastikan cabang tujuan benar-benar milik business Owner.
         Branch::where('id', $validated['branch_id'])

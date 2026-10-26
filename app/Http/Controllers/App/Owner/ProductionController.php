@@ -47,7 +47,7 @@ class ProductionController extends Controller
             'recipe_id' => 'required|exists:recipes,id',
             'branch_id' => 'required|exists:branches,id',
             'batch_multiplier' => 'required|numeric|min:0.01',
-            'expired_date' => 'nullable|date|after:today',
+            'expired_date' => 'nullable|date',
         ]);
 
         $businessId = auth()->user()->business_id;

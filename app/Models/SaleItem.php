@@ -42,4 +42,19 @@ class SaleItem extends Model
     {
         return $this->hasMany(SaleItemBatch::class);
     }
+
+    public function returnItems(): HasMany
+    {
+        return $this->hasMany(SaleReturnItem::class, 'sale_item_id');
+    }
+
+    public function returnedQuantity(): float
+    {
+        return (float) $this->returnItems()->sum('quantity');
+    }
+
+    public function returnableQuantity(): float
+    {
+        return max(0.0, (float) $this->quantity - $this->returnedQuantity());
+    }
 }

@@ -70,7 +70,7 @@
             </tbody>
         </table>
     </div>
-    @if ($purchases->hasPages())<div class="mt-4">{{ $purchases->links() }}</div>@endif
+    {{-- pagination removed: outstanding computed in-memory --}}
 </x-card>
 
 {{-- Section 2: Kredit ke supplier (retur melebihi sisa utang) --}}

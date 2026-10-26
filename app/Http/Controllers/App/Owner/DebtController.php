@@ -30,19 +30,17 @@ class DebtController extends Controller
             ->with(['supplier', 'branch'])
             ->withSum(['payments as paid_amount'], 'amount')
             ->withSum(['returns as returned_amount'], 'total_amount')
-            // created_at ASC = paling lama belum dibayar dulu
-            // (BUSINESS-RULES.md bagian 6, proxy paling lama belum dibayar).
             ->orderBy('created_at')
-            ->paginate(15);
+            ->get();
 
-        $purchases->getCollection()->each(function (Purchase $purchase) {
+        $purchases->each(function (Purchase $purchase) {
             $purchase->outstanding_amount = (float) $purchase->total_amount
                 - (float) $purchase->paid_amount
                 - (float) $purchase->returned_amount;
         });
 
         // Pisahkan utang vs kredit di level collection agar view tetap sederhana.
-        $grouped = $this->groupByOutstanding($purchases->getCollection());
+        $grouped = $this->groupByOutstanding($purchases);
 
         $payables = $grouped['payable'];
         $credits = $grouped['credit'];

@@ -68,6 +68,8 @@ class ShipmentController extends Controller
             ->where('user_id', $user->id)
             ->firstOrFail();
 
+        $sale->load('items');
+
         $shipment = DB::transaction(function () use ($validated, $user, $sale) {
             $shipment = Shipment::create([
                 'business_id' => $user->business_id,
@@ -81,6 +83,14 @@ class ShipmentController extends Controller
             ]);
 
             foreach ($validated['items'] as $item) {
+                $saleItem = $sale->items->firstWhere('id', (int) $item['sale_item_id']);
+                if (! $saleItem || (int) $saleItem->product_id !== (int) $item['product_id']) {
+                    throw new \InvalidArgumentException('Item pengiriman tidak sesuai dengan transaksi penjualan.');
+                }
+                if ((float) $item['quantity'] > (float) $saleItem->quantity) {
+                    throw new \InvalidArgumentException('Qty pengiriman melebihi qty yang terjual.');
+                }
+
                 ShipmentItem::create([
                     'shipment_id' => $shipment->id,
                     'product_id' => $item['product_id'],

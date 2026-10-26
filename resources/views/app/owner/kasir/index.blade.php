@@ -31,7 +31,9 @@
                             @endif
                         </td>
                         <td class="px-4 py-3">
-                            <a href="{{ route('app.kasir.edit', $user) }}"><x-button variant="secondary" size="sm">Edit</x-button></a>
+                            @can('update', $user)
+                                <a href="{{ route('app.kasir.edit', $user) }}"><x-button variant="secondary" size="sm">Edit</x-button></a>
+                            @endcan
                             @can('resetPassword', $user)
                                 <a href="{{ route('app.kasir.reset-password.form', $user) }}"><x-button variant="warning" size="sm">Reset Password</x-button></a>
                             @endcan

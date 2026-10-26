@@ -61,6 +61,11 @@ class SaleReturnController extends Controller
                     ->firstOrFail();
 
                 $qty = (float) $item['quantity'];
+                if ($qty - $saleItem->returnableQuantity() > 0.005) {
+                    throw new \InvalidArgumentException(
+                        "Kuantitas retur melebihi sisa yang dapat diretur ({$saleItem->returnableQuantity()})."
+                    );
+                }
                 $returnSubtotal = $qty * (float) $saleItem->unit_price;
 
                 $returnItem = SaleReturnItem::create([

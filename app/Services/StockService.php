@@ -147,11 +147,13 @@ class StockService
                     $totalNeeded, $item->unit, $item->rawMaterial->base_unit
                 );
 
-                // Check total available stock first
-                $totalAvailable = (float) RawMaterialBatch::where('raw_material_id', $item->raw_material_id)
+                // Check total available stock first (lock to avoid race)
+                $batchesForCheck = RawMaterialBatch::where('raw_material_id', $item->raw_material_id)
                     ->where('branch_id', $branchId)
                     ->where('quantity_remaining', '>', 0)
-                    ->sum('quantity_remaining');
+                    ->lockForUpdate()
+                    ->get();
+                $totalAvailable = (float) $batchesForCheck->sum('quantity_remaining');
 
                 if ($totalAvailable < $convertedNeeded) {
                     $shortages[] = (object) [
@@ -169,6 +171,7 @@ class StockService
                     ->where('branch_id', $branchId)
                     ->where('quantity_remaining', '>', 0)
                     ->orderByRaw('COALESCE(expired_date, \'9999-12-31\') ASC')
+                    ->lockForUpdate()
                     ->get();
 
                 $remaining = $convertedNeeded;
@@ -344,7 +347,7 @@ class StockService
             'item_type' => $itemType,
             'item_id' => $itemId,
             'batch_id' => $batchId,
-            'batch_type' => $batchType ?? $itemType,
+            'batch_type' => $batchType ?? ($itemType === 'product' ? 'product' : 'raw_material'),
             'movement_type' => $movementType,
             'quantity' => $quantity,
             'reference_type' => $referenceType,
@@ -379,6 +382,7 @@ class StockService
 
         $last = \App\Models\ProductionOrder::where('production_code', 'like', "{$prefix}%")
             ->orderByDesc('id')
+            ->lockForUpdate()
             ->first();
 
         $seq = $last ? (int) substr($last->production_code, -4) + 1 : 1;
@@ -402,9 +406,19 @@ class StockService
             $diff = $actualQty - $systemQty;
 
             if ($itemType === 'raw_material') {
-                RawMaterialBatch::where('id', $batchId)->update(['quantity_remaining' => $actualQty]);
+                $batch = RawMaterialBatch::where('id', $batchId)
+                    ->where('business_id', $businessId)
+                    ->where('branch_id', $branchId)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+                $batch->update(['quantity_remaining' => $actualQty]);
             } else {
-                ProductBatch::where('id', $batchId)->update(['quantity_remaining' => $actualQty]);
+                $batch = ProductBatch::where('id', $batchId)
+                    ->where('business_id', $businessId)
+                    ->where('branch_id', $branchId)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+                $batch->update(['quantity_remaining' => $actualQty]);
             }
 
             if ($diff != 0) {
@@ -448,6 +462,7 @@ class StockService
 
         $last = Sale::where('invoice_no', 'like', "{$prefix}%")
             ->orderByDesc('id')
+            ->lockForUpdate()
             ->first();
 
         $seq = $last ? (int) substr($last->invoice_no, -4) + 1 : 1;
@@ -476,19 +491,26 @@ class StockService
             );
         }
 
-        $batches = ProductBatch::where('product_id', $productId)
-            ->where('branch_id', $branchId)
-            ->where('quantity_remaining', '>', 0)
-            ->orderByRaw('COALESCE(expired_date, \'9999-12-31\') ASC')
-            ->get();
-
-        $remaining = $quantityNeeded;
-        $deductions = collect();
-
         return DB::transaction(function () use (
-            $batches, &$remaining, $saleItemId, $quantityNeeded,
-            $businessId, $branchId, $productId, $userId, $deductions
+            $productId, $branchId, $businessId, $quantityNeeded, $saleItemId, $userId
         ) {
+            $batches = ProductBatch::where('product_id', $productId)
+                ->where('branch_id', $branchId)
+                ->where('quantity_remaining', '>', 0)
+                ->orderByRaw('COALESCE(expired_date, \'9999-12-31\') ASC')
+                ->lockForUpdate()
+                ->get();
+
+            $totalAvailable = (float) $batches->sum('quantity_remaining');
+            if ($totalAvailable < $quantityNeeded) {
+                throw new \InvalidArgumentException(
+                    "Stok produk tidak mencukupi. Tersedia: {$totalAvailable}, diminta: {$quantityNeeded}"
+                );
+            }
+
+            $remaining = $quantityNeeded;
+            $deductions = collect();
+
             foreach ($batches as $batch) {
                 if ($remaining <= 0) break;
 
@@ -571,10 +593,14 @@ class StockService
             foreach ($sibRecords as $sib) {
                 if ($remaining <= 0) break;
 
-                $batch = ProductBatch::findOrFail($sib->product_batch_id);
+                $batch = ProductBatch::lockForUpdate()->findOrFail($sib->product_batch_id);
                 $restoreQty = min($remaining, (float) $sib->quantity);
 
                 $batch->increment('quantity_remaining', $restoreQty);
+
+                // Kurangi qty yang masih bisa diretur dari SaleItemBatch agar retur
+                // berikutnya tidak bisa memakai jatah yang sama dua kali.
+                $sib->decrement('quantity', $restoreQty);
 
                 $this->recordMovement(
                     businessId: $sale->business_id,
